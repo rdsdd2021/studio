@@ -2,6 +2,7 @@ import { getLeads, getAssignments } from '@/actions/leads';
 import { Lead, Assignment } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from '@/components/leads/columns';
+import { users } from '@/lib/data';
 
 export default async function MyLeadsPage() {
   const allLeads = await getLeads();

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { UserPlus, X, Upload, Tag } from 'lucide-react'
 import { AssignLeadsDialog } from './assign-leads-dialog'
-import { users } from '@/lib/data' 
 import type { LeadData } from './columns'
 import { DataTableFacetedFilter } from './data-table-faceted-filter'
 import type { Disposition } from '@/lib/types'
@@ -70,7 +69,9 @@ export function DataTableToolbar<TData>({
     table.resetColumnFilters();
     table.setGlobalFilter('');
     table.resetRowSelection();
-    setIsAllFilteredRowsSelected(false);
+    if (setIsAllFilteredRowsSelected) {
+      setIsAllFilteredRowsSelected(false);
+    }
   }
 
   return (
@@ -78,7 +79,7 @@ export function DataTableToolbar<TData>({
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-1 items-center space-x-2 flex-wrap gap-y-2">
           <Input
-            placeholder="Filter by name, phone, or custom fields..."
+            placeholder="Filter by name, phone, etc..."
             value={(table.getState().globalFilter as string) ?? ''}
             onChange={(event) =>
               table.setGlobalFilter(event.target.value)
@@ -177,7 +178,6 @@ export function DataTableToolbar<TData>({
         isOpen={isAssignDialogOpen}
         onOpenChange={setIsAssignDialogOpen}
         leadIds={selectedLeadIds}
-        callers={users.filter(u => u.role === 'caller')}
       />
       <ImportLeadsDialog 
         isOpen={isImportDialogOpen}

@@ -1,87 +1,59 @@
 'use server'
 
-import { getDb } from "@/lib/firebase"
+import { users } from "@/lib/data"
 import type { User } from "@/lib/types"
 import { revalidatePath } from "next/cache"
-import { FieldValue } from "firebase-admin/firestore";
-
-async function docToUser(doc: FirebaseFirestore.DocumentSnapshot): Promise<User> {
-    const db = getDb();
-    const data = doc.data();
-    if (!data) throw new Error("Document data is empty");
-    return {
-        id: doc.id,
-        name: data.name,
-        phone: data.phone,
-        role: data.role,
-        status: data.status,
-        createdAt: (data.createdAt.toDate()).toISOString(),
-        avatar: data.avatar,
-    };
-}
 
 export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
-  const db = getDb();
-  const userRef = db.collection('users').doc(userId);
-  await userRef.update(data);
-  const updatedDoc = await userRef.get();
+  const userIndex = users.findIndex(u => u.id === userId);
+  if (userIndex === -1) {
+    throw new Error("User not found");
+  }
+  
+  users[userIndex] = { ...users[userIndex], ...data };
   
   revalidatePath('/users');
-  return docToUser(updatedDoc);
+  return JSON.parse(JSON.stringify(users[userIndex]));
 }
 
 export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status'>): Promise<User> {
-  const db = getDb();
-  const newUserRef = db.collection('users').doc();
-  const newUser: Omit<User, 'id'> = {
+  const newUser: User = {
+    id: `usr_${Date.now()}`,
     ...data,
     status: 'pending',
     createdAt: new Date().toISOString(),
     avatar: `https://placehold.co/32x32.png`,
   };
   
-  // Convert ISO string to Firestore Timestamp for createdAt
-  const { createdAt, ...restOfUser } = newUser;
-  const dataToSet = {
-    ...restOfUser,
-    createdAt: FieldValue.serverTimestamp()
-  }
-
-  await newUserRef.set(dataToSet);
+  users.unshift(newUser);
 
   revalidatePath('/users');
-  return { id: newUserRef.id, ...newUser };
+  return JSON.parse(JSON.stringify(newUser));
 }
 
 export async function toggleUserStatus(userId: string): Promise<User> {
-    const db = getDb();
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
         throw new Error("User not found");
     }
-    const currentStatus = userDoc.data()?.status;
+    const currentStatus = users[userIndex].status;
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    await userRef.update({ status: newStatus });
+    users[userIndex].status = newStatus;
     
-    const updatedDoc = await userRef.get();
     revalidatePath('/users');
-    return docToUser(updatedDoc);
+    return JSON.parse(JSON.stringify(users[userIndex]));
 }
 
 export async function approveUser(userId: string): Promise<User> {
-    const db = getDb();
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
         throw new Error("User not found");
     }
 
-    if (userDoc.data()?.status === 'pending') {
-        await userRef.update({ status: 'active' });
+    if (users[userIndex].status === 'pending') {
+        users[userIndex].status = 'active';
     }
 
-    const updatedDoc = await userRef.get();
     revalidatePath('/users');
-    return docToUser(updatedDoc);
+    return JSON.parse(JSON.stringify(users[userIndex]));
 }

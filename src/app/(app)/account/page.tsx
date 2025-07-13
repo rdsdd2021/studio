@@ -44,6 +44,7 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Tag, Trash2, X } from 'lucide-react';
 import { getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings } from '@/actions/settings';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ProfileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -56,7 +57,7 @@ const GeofenceFormSchema = z.object({
     radius: z.coerce.number().min(1, { message: "Radius must be at least 1." })
 })
 
-// MOCK DATA - In a real app this would come from the database
+// MOCK DATA - In a real app this would come from a database or a global context
 const uniqueCampaigns: string[] = ['Summer Fest 2024', 'Diwali Dhamaka'];
 const globalDispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 const globalSubDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
@@ -318,8 +319,14 @@ export default function AccountPage() {
             {geofenceSettings ? (
                 <GeofenceSettingsForm settings={geofenceSettings} />
             ) : (
-                <CardContent>
-                    <p>Loading settings...</p>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <Skeleton className="h-64 w-full" />
+                  </div>
                 </CardContent>
             )}
           </Card>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,13 +9,14 @@ import type { LoginActivity, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { AddUserDialog } from '@/components/users/add-user-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UsersPage() {
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
-  const [data, setData] = React.useState<User[]>([]);
+  const [data, setData] = React.useState<User[] | null>(null);
 
   React.useEffect(() => {
-    // In a real app, this data would be fetched
+    // In a real app, this data would be fetched. Here we simulate it.
     const latestActivityMap = new Map<string, LoginActivity>();
 
     loginActivity
@@ -31,7 +33,10 @@ export default function UsersPage() {
       return { ...user, loginStatus };
     });
 
-    setData(enrichedUsers);
+    // Simulate network delay
+    setTimeout(() => {
+        setData(enrichedUsers);
+    }, 500);
   }, []);
 
 
@@ -51,7 +56,17 @@ export default function UsersPage() {
             Add User
           </Button>
         </div>
-        <DataTable columns={columns} data={data} />
+        {data ? (
+          <DataTable columns={columns} data={data} />
+        ) : (
+          <div className="rounded-md border">
+            <div className="p-4 space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

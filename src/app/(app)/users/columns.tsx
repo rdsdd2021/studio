@@ -34,7 +34,7 @@ const UserActions = ({ user }: { user: User }) => {
         title: `User ${user.status === 'active' ? 'Deactivated' : 'Activated'}`,
         description: `${user.name} has been successfully ${user.status === 'active' ? 'deactivated' : 'activated'}.`,
       });
-      router.refresh();
+      // No router.refresh() needed with mock data, changes are local
     } catch (error) {
       toast({
         title: 'Update Failed',
@@ -51,7 +51,7 @@ const UserActions = ({ user }: { user: User }) => {
         title: "User Approved",
         description: `${user.name} has been approved and is now active.`,
       });
-      router.refresh();
+       // No router.refresh() needed with mock data, changes are local
     } catch (error) {
        toast({
         title: 'Approval Failed',

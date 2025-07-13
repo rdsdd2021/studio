@@ -1,5 +1,5 @@
 import { getLeads, getAssignments } from '@/actions/leads';
-import type { Lead, Assignment } from '@/lib/types';
+import type { Lead, Assignment, User } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from '@/components/leads/columns';
 import { users } from '@/lib/data';
