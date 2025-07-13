@@ -65,7 +65,7 @@ export function DataTable<TData, TValue>({
         locality: true,
         district: true,
         gender: true,
-        campaign: true,
+        campaigns: true,
     })
   
   const [isAllFilteredRowsSelected, setIsAllFilteredRowsSelected] = React.useState(false);

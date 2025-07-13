@@ -44,7 +44,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const previousLeadId = currentIndex > 0 ? myLeads[currentIndex - 1].refId : undefined;
   const nextLeadId = currentIndex < myLeads.length - 1 ? myLeads[currentIndex + 1].refId : undefined;
 
-  const relevantCampaignFields = lead.campaign ? campaignCustomFields[lead.campaign] || [] : [];
+  const relevantCampaignFields = lead.campaigns?.flatMap(c => campaignCustomFields[c] || []) || [];
   const allCustomFieldsForLead = [...universalCustomFields, ...relevantCampaignFields];
   const hasCustomFields = allCustomFieldsForLead.length > 0;
 

@@ -10,7 +10,7 @@ import type { LeadData } from './columns'
 import { DataTableFacetedFilter } from './data-table-faceted-filter'
 import type { Disposition } from '@/lib/types'
 import { ImportLeadsDialog } from './import-leads-dialog'
-import { UpdateCampaignDialog } from './update-campaign-dialog'
+import { AddCampaignDialog } from './update-campaign-dialog'
 import { Alert, AlertDescription } from '../ui/alert'
 
 const dispositions: {label: Disposition, value: Disposition}[] = [
@@ -100,10 +100,10 @@ export function DataTableToolbar<TData>({
               options={callers}
             />
           )}
-          {campaignOptions && table.getColumn("campaign") && (
+          {campaignOptions && table.getColumn("campaigns") && (
             <DataTableFacetedFilter
-              column={table.getColumn("campaign")}
-              title="Campaign"
+              column={table.getColumn("campaigns")}
+              title="Campaigns"
               options={campaignOptions}
             />
           )}
@@ -155,7 +155,7 @@ export function DataTableToolbar<TData>({
               <>
                 <Button size="sm" variant="outline" className="h-8" onClick={() => setIsCampaignDialogOpen(true)}>
                   <Tag className="mr-2 h-4 w-4" />
-                  Update Campaign
+                  Add Campaign
                 </Button>
                 <Button size="sm" className="h-8" onClick={() => setIsAssignDialogOpen(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
@@ -183,7 +183,7 @@ export function DataTableToolbar<TData>({
         isOpen={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
       />
-      <UpdateCampaignDialog
+      <AddCampaignDialog
         isOpen={isCampaignDialogOpen}
         onOpenChange={setIsCampaignDialogOpen}
         leadIds={selectedLeadIds}

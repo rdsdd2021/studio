@@ -32,12 +32,17 @@ export default async function LeadsPage() {
     const values = new Set(allLeads.map(lead => lead[fieldName]).filter(Boolean));
     return Array.from(values).map(value => ({ label: String(value), value: String(value) }));
   }
+  
+  const getUniqueCampaignOptions = () => {
+    const values = new Set(allLeads.flatMap(lead => lead.campaigns || []).filter(Boolean));
+    return Array.from(values).map(value => ({ label: String(value), value: String(value) }));
+  }
 
   const schoolOptions = getUniqueOptions('school');
   const localityOptions = getUniqueOptions('locality');
   const districtOptions = getUniqueOptions('district');
   const genderOptions = getUniqueOptions('gender');
-  const campaignOptions = getUniqueOptions('campaign');
+  const campaignOptions = getUniqueCampaignOptions();
   
   return (
     <div className="container mx-auto py-2">

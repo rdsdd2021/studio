@@ -26,7 +26,7 @@ export type LeadData = {
   disposition: Disposition
   assignedTo?: string
   assignedTime?: string
-  campaign?: string
+  campaigns?: string[]
   customFields?: Record<string, any>
 }
 
@@ -105,17 +105,24 @@ export const columns: ColumnDef<LeadData>[] = [
     }
   },
   {
-    accessorKey: 'campaign',
-    header: 'Campaign',
+    accessorKey: 'campaigns',
+    header: 'Campaigns',
     cell: ({ row }) => {
-      const campaign = row.getValue('campaign') as string | undefined;
-      if (!campaign) {
+      const campaigns = row.getValue('campaigns') as string[] | undefined;
+      if (!campaigns || campaigns.length === 0) {
         return <span className='text-muted-foreground'>N/A</span>
       }
-      return <Badge variant="outline"><Tag className="mr-1 h-3 w-3" />{campaign}</Badge>
+      return (
+        <div className="flex flex-wrap gap-1">
+          {campaigns.map(campaign => (
+            <Badge key={campaign} variant="outline" className="font-normal"><Tag className="mr-1 h-3 w-3" />{campaign}</Badge>
+          ))}
+        </div>
+      )
     },
     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
+      const campaigns = row.getValue(id) as string[] || [];
+      return value.some((v: string) => campaigns.includes(v));
     },
   },
   {

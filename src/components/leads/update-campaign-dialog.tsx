@@ -14,20 +14,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { updateCampaignForLeads } from '@/actions/leads'
+import { addCampaignToLeads } from '@/actions/leads'
 import { Tag } from 'lucide-react'
 
-interface UpdateCampaignDialogProps {
+interface AddCampaignDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   leadIds: string[]
 }
 
-export function UpdateCampaignDialog({
+export function AddCampaignDialog({
   isOpen,
   onOpenChange,
   leadIds,
-}: UpdateCampaignDialogProps) {
+}: AddCampaignDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -45,10 +45,10 @@ export function UpdateCampaignDialog({
 
     setIsSubmitting(true)
     try {
-      await updateCampaignForLeads(leadIds, campaign)
+      await addCampaignToLeads(leadIds, campaign)
       toast({
-        title: 'Campaign Updated!',
-        description: `The campaign tag for ${leadIds.length} lead(s) has been updated.`,
+        title: 'Campaign Tag Added!',
+        description: `The campaign tag has been added to ${leadIds.length} lead(s).`,
       })
       onOpenChange(false)
       setCampaign('')
@@ -57,7 +57,7 @@ export function UpdateCampaignDialog({
     } catch (error) {
       toast({
         title: 'Update Failed',
-        description: 'Could not update campaign tag. Please try again.',
+        description: 'Could not add campaign tag. Please try again.',
         variant: 'destructive',
       })
     } finally {
@@ -76,9 +76,9 @@ export function UpdateCampaignDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Update Campaign Tag</DialogTitle>
+          <DialogTitle>Add Campaign Tag</DialogTitle>
           <DialogDescription>
-            Enter a new campaign tag for the selected {leadIds.length} lead(s). This will overwrite any existing tag.
+            Enter a campaign tag to add to the selected {leadIds.length} lead(s). This will not overwrite existing tags.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -107,7 +107,7 @@ export function UpdateCampaignDialog({
             Cancel
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Updating...' : 'Update Campaign'}
+            {isSubmitting ? 'Adding...' : 'Add Campaign Tag'}
           </Button>
         </DialogFooter>
       </DialogContent>

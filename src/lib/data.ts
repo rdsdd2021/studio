@@ -12,16 +12,16 @@ export const users: User[] = [
 ];
 
 export const leads: Lead[] = [
-    { refId: 'lead_001', name: 'Aarav Sharma', phone: '9876543210', gender: 'Male', school: 'Delhi Public School', locality: 'RK Puram', district: 'New Delhi', createdAt: new Date('2024-05-01T09:00:00Z').toISOString(), campaign: 'Summer Fest 2024', customFields: { "Parent's Name": { value: 'Sunita Sharma', updatedBy: 'Import', updatedAt: new Date('2024-05-01T09:00:00Z').toISOString() } } },
+    { refId: 'lead_001', name: 'Aarav Sharma', phone: '9876543210', gender: 'Male', school: 'Delhi Public School', locality: 'RK Puram', district: 'New Delhi', createdAt: new Date('2024-05-01T09:00:00Z').toISOString(), campaigns: ['Summer Fest 2024'], customFields: { "Parent's Name": { value: 'Sunita Sharma', updatedBy: 'Import', updatedAt: new Date('2024-05-01T09:00:00Z').toISOString() } } },
     { refId: 'lead_002', name: 'Priya Patel', phone: '9876543211', gender: 'Female', school: 'Modern School', locality: 'Vasant Vihar', district: 'New Delhi', createdAt: new Date('2024-05-01T10:30:00Z').toISOString() },
-    { refId: 'lead_003', name: 'Rohan Gupta', phone: '9876543212', gender: 'Male', school: 'Amity International', locality: 'Saket', district: 'South Delhi', createdAt: new Date('2024-05-02T11:00:00Z').toISOString(), campaign: 'Diwali Dhamaka', customFields: {} },
-    { refId: 'lead_004', name: 'Sneha Reddy', phone: '9876543213', gender: 'Female', school: 'Delhi Public School', locality: 'Noida Sector 15', district: 'Gautam Budh Nagar', createdAt: new Date('2024-05-02T14:15:00Z').toISOString(), campaign: 'Summer Fest 2024' },
+    { refId: 'lead_003', name: 'Rohan Gupta', phone: '9876543212', gender: 'Male', school: 'Amity International', locality: 'Saket', district: 'South Delhi', createdAt: new Date('2024-05-02T11:00:00Z').toISOString(), campaigns: ['Diwali Dhamaka'], customFields: {} },
+    { refId: 'lead_004', name: 'Sneha Reddy', phone: '9876543213', gender: 'Female', school: 'Delhi Public School', locality: 'Noida Sector 15', district: 'Gautam Budh Nagar', createdAt: new Date('2024-05-02T14:15:00Z').toISOString(), campaigns: ['Summer Fest 2024'] },
     { refId: 'lead_005', name: 'Vikram Singh', phone: '9876543214', gender: 'Male', school: 'The Shri Ram School', locality: 'DLF Phase 3', district: 'Gurugram', createdAt: new Date('2024-05-03T16:00:00Z').toISOString() },
-    { refId: 'lead_006', name: 'Ananya Iyer', phone: '9876543215', gender: 'Female', school: 'Venkateshwar Global School', locality: 'Rohini', district: 'North West Delhi', createdAt: new Date('2024-05-04T09:30:00Z').toISOString(), campaign: 'Diwali Dhamaka' },
+    { refId: 'lead_006', name: 'Ananya Iyer', phone: '9876543215', gender: 'Female', school: 'Venkateshwar Global School', locality: 'Rohini', district: 'North West Delhi', createdAt: new Date('2024-05-04T09:30:00Z').toISOString(), campaigns: ['Diwali Dhamaka'] },
     { refId: 'lead_007', name: 'Karan Malhotra', phone: '9876543216', gender: 'Male', school: 'Ryan International', locality: 'Vasant Kunj', district: 'South West Delhi', createdAt: new Date('2024-05-05T11:45:00Z').toISOString() },
-    { refId: 'lead_008', name: 'Diya Mehta', phone: '9876543217', gender: 'Female', school: 'Delhi Public School', locality: 'Mathura Road', district: 'South East Delhi', createdAt: new Date('2024-05-06T13:00:00Z').toISOString(), campaign: 'Summer Fest 2024' },
+    { refId: 'lead_008', name: 'Diya Mehta', phone: '9876543217', gender: 'Female', school: 'Delhi Public School', locality: 'Mathura Road', district: 'South East Delhi', createdAt: new Date('2024-05-06T13:00:00Z').toISOString(), campaigns: ['Summer Fest 2024'] },
     { refId: 'lead_009', name: 'Arjun Desai', phone: '9876543218', gender: 'Male', school: 'Springdales School', locality: 'Dhaula Kuan', district: 'New Delhi', createdAt: new Date('2024-05-07T15:20:00Z').toISOString() },
-    { refId: 'lead_010', name: 'Ishita Joshi', phone: '9876543219', gender: 'Female', school: 'Apeejay School', locality: 'Pitampura', district: 'North West Delhi', createdAt: new Date('2024-05-08T17:00:00Z').toISOString(), campaign: 'Diwali Dhamaka' },
+    { refId: 'lead_010', name: 'Ishita Joshi', phone: '9876543219', gender: 'Female', school: 'Apeejay School', locality: 'Pitampura', district: 'North West Delhi', createdAt: new Date('2024-05-08T17:00:00Z').toISOString(), campaigns: ['Diwali Dhamaka', 'Summer Fest 2024'] },
 ];
 
 export const assignmentHistory: Assignment[] = [

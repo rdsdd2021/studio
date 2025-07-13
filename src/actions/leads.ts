@@ -103,7 +103,7 @@ export async function importLeads(
             district: leadData.district || 'N/A',
             refId: `lead_${Date.now()}_${Math.random().toString(36).substring(7)}`,
             createdAt: now,
-            campaign: campaign || leadData.campaign,
+            campaigns: campaign ? [campaign] : leadData.campaigns || [],
             customFields: leadData.customFields || {},
         };
         leads.unshift(newLead);
@@ -113,11 +113,16 @@ export async function importLeads(
 }
 
 
-export async function updateCampaignForLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
+export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
     let updatedCount = 0;
     leads.forEach(lead => {
         if (leadIds.includes(lead.refId)) {
-            lead.campaign = campaign;
+            if (!lead.campaigns) {
+                lead.campaigns = [];
+            }
+            if (!lead.campaigns.includes(campaign)) {
+                lead.campaigns.push(campaign);
+            }
             updatedCount++;
         }
     });
