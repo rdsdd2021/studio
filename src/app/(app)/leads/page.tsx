@@ -2,6 +2,7 @@ import { getLeads, getAssignments } from '@/actions/leads';
 import type { Lead, Assignment } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from '@/components/leads/columns';
+import { users } from '@/lib/data';
 
 export default async function LeadsPage() {
   const allLeads = await getLeads();
@@ -25,6 +26,8 @@ export default async function LeadsPage() {
     }
   });
 
+  const callers = users.filter(u => u.role === 'caller').map(u => ({ label: u.name, value: u.name }));
+  
   return (
     <div className="container mx-auto py-2">
       <div className="mb-6">
@@ -33,7 +36,7 @@ export default async function LeadsPage() {
           Filter, view, and assign leads to your team.
         </p>
       </div>
-      <DataTable columns={columns} data={data} />
+      <DataTable columns={columns} data={data} callers={callers} />
     </div>
   )
 }
