@@ -2,6 +2,7 @@ import { getLeads, getAssignments } from '@/actions/leads';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { DispositionChart } from '@/components/dashboard/disposition-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RecentActivity } from '@/components/dashboard/recent-activity';
 
 export default async function DashboardPage() {
   const allLeads = await getLeads();
@@ -16,8 +17,8 @@ export default async function DashboardPage() {
 
       <StatsCards leads={allLeads} assignments={allAssignments} />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Disposition Overview</CardTitle>
           </CardHeader>
@@ -25,12 +26,12 @@ export default async function DashboardPage() {
             <DispositionChart assignments={allAssignments} />
           </CardContent>
         </Card>
-        <Card className="col-span-4 md:col-span-3">
+        <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">Recent activity feed will be shown here.</p>
+            <RecentActivity assignments={allAssignments} />
           </CardContent>
         </Card>
       </div>
