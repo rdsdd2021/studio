@@ -1,26 +1,63 @@
 'use server'
 
-import { assignmentHistory, leads, users } from "@/lib/data"
+import { db } from "@/lib/firebase";
 import type { Lead, Assignment, Disposition, SubDisposition } from "@/lib/types"
+import { FieldValue } from "firebase-admin/firestore";
+
+async function docToLead(doc: FirebaseFirestore.DocumentSnapshot): Promise<Lead> {
+    const data = doc.data();
+    if (!data) throw new Error("Document data is empty");
+    return {
+        refId: doc.id,
+        name: data.name,
+        phone: data.phone,
+        gender: data.gender,
+        school: data.school,
+        locality: data.locality,
+        district: data.district,
+        createdAt: (data.createdAt.toDate()).toISOString(),
+        campaign: data.campaign,
+        customFields: data.customFields,
+    };
+}
+
+async function docToAssignment(doc: FirebaseFirestore.DocumentSnapshot): Promise<Assignment> {
+    const data = doc.data();
+    if (!data) throw new Error("Document data is empty");
+    return {
+        id: doc.id,
+        mainDataRefId: data.mainDataRefId,
+        userId: data.userId,
+        userName: data.userName,
+        assignedTime: (data.assignedTime.toDate()).toISOString(),
+        disposition: data.disposition,
+        dispositionTime: data.dispositionTime ? (data.dispositionTime.toDate()).toISOString() : undefined,
+        subDisposition: data.subDisposition,
+        subDispositionTime: data.subDispositionTime ? (data.subDispositionTime.toDate()).toISOString() : undefined,
+        remark: data.remark,
+    };
+}
+
 
 export async function getLeads(): Promise<Lead[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return leads;
+  const snapshot = await db.collection('leads').orderBy('createdAt', 'desc').get();
+  return Promise.all(snapshot.docs.map(docToLead));
 }
 
 export async function getAssignments(): Promise<Assignment[]> {
-    // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return assignmentHistory;
+    const snapshot = await db.collectionGroup('assignments').orderBy('assignedTime', 'desc').get();
+    return Promise.all(snapshot.docs.map(docToAssignment));
 }
 
 export async function getLeadDetails(id: string): Promise<Lead | undefined> {
-  return leads.find(lead => lead.refId === id);
+  const doc = await db.collection('leads').doc(id).get();
+  if (!doc.exists) return undefined;
+  return docToLead(doc);
 }
 
 export async function getAssignmentHistory(leadId: string): Promise<Assignment[]> {
-  return assignmentHistory.filter(a => a.mainDataRefId === leadId).sort((a, b) => new Date(b.assignedTime).getTime() - new Date(a.assignedTime).getTime());
+  const snapshot = await db.collection('leads').doc(leadId).collection('assignments').orderBy('assignedTime', 'desc').get();
+  return Promise.all(snapshot.docs.map(docToAssignment));
 }
 
 export async function addAssignment(
@@ -30,73 +67,81 @@ export async function addAssignment(
   subDisposition: SubDisposition,
   remark: string
 ): Promise<Assignment> {
-  const user = users.find(u => u.id === userId);
+  const userDoc = await db.collection('users').doc(userId).get();
+  const user = userDoc.data();
   if (!user) {
     throw new Error("User not found");
   }
 
-  const newAssignment: Assignment = {
-    id: `asg_${Math.random().toString(36).substr(2, 9)}`,
+  const now = new Date();
+  const newAssignmentData = {
     mainDataRefId: leadId,
-    userId: user.id,
+    userId: userId,
     userName: user.name,
-    assignedTime: new Date().toISOString(),
+    assignedTime: now,
     disposition,
-    dispositionTime: new Date().toISOString(),
+    dispositionTime: now,
     subDisposition,
-    subDispositionTime: new Date().toISOString(),
+    subDispositionTime: now,
     remark,
   };
 
-  assignmentHistory.push(newAssignment);
-  return newAssignment;
+  const assignmentRef = await db.collection('leads').doc(leadId).collection('assignments').add(newAssignmentData);
+  
+  return { id: assignmentRef.id, ...newAssignmentData, assignedTime: now.toISOString(), dispositionTime: now.toISOString(), subDispositionTime: now.toISOString() };
 }
 
 export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
-    const user = users.find(u => u.id === userId);
+    const userDoc = await db.collection('users').doc(userId).get();
+    const user = userDoc.data();
     if (!user) {
         throw new Error("User not found");
     }
 
+    const now = new Date();
     const newAssignments: Assignment[] = [];
+    const batch = db.batch();
+
     for (const leadId of leadIds) {
-        const newAssignment: Assignment = {
-            id: `asg_${Math.random().toString(36).substr(2, 9)}`,
+        const newAssignmentData = {
             mainDataRefId: leadId,
-            userId: user.id,
+            userId: userId,
             userName: user.name,
-            assignedTime: new Date().toISOString(),
-            disposition: 'New',
+            assignedTime: now,
+            disposition: 'New' as Disposition,
         };
-        assignmentHistory.unshift(newAssignment);
-        newAssignments.push(newAssignment);
+        const assignmentRef = db.collection('leads').doc(leadId).collection('assignments').doc();
+        batch.set(assignmentRef, newAssignmentData);
+        newAssignments.push({ id: assignmentRef.id, ...newAssignmentData, assignedTime: now.toISOString() });
     }
+    
+    await batch.commit();
     return newAssignments;
 }
 
 export async function importLeads(newLeads: Omit<Lead, 'refId' | 'createdAt'>[]): Promise<{ count: number }> {
-    const startingId = Math.max(...leads.map(l => parseInt(l.refId.replace('LD', ''), 10))) + 1;
+    const batch = db.batch();
     
-    newLeads.forEach((lead, index) => {
-        const newLead: Lead = {
+    newLeads.forEach((lead) => {
+        const leadRef = db.collection('leads').doc();
+        const newLeadData = {
             ...lead,
-            refId: `LD${startingId + index}`,
-            createdAt: new Date().toISOString(),
+            createdAt: FieldValue.serverTimestamp(),
         };
-        leads.unshift(newLead);
+        batch.set(leadRef, newLeadData);
     });
     
+    await batch.commit();
     return { count: newLeads.length };
 }
 
 export async function updateCampaignForLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
-    let updatedCount = 0;
+    const batch = db.batch();
     leadIds.forEach(leadId => {
-        const leadIndex = leads.findIndex(l => l.refId === leadId);
-        if (leadIndex !== -1) {
-            leads[leadIndex].campaign = campaign;
-            updatedCount++;
-        }
+        const leadRef = db.collection('leads').doc(leadId);
+        batch.update(leadRef, { campaign });
     });
-    return { count: updatedCount };
+    
+    await batch.commit();
+    return { count: leadIds.length };
 }
