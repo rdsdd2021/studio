@@ -24,11 +24,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { addAssignment } from '@/actions/leads'
 import type { Disposition, SubDisposition, Assignment, Lead } from '@/lib/types'
-import { Wand2, Zap, BrainCircuit } from 'lucide-react'
-import { Badge } from '../ui/badge'
-import { Progress } from '../ui/progress'
+import { BrainCircuit } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Checkbox } from '../ui/checkbox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
 const dispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 const subDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
@@ -58,7 +57,6 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSuggesting, setIsSuggesting] = React.useState(false);
-  const [suggestion, setSuggestion] = React.useState<SuggestionResponse | null>(null);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -69,24 +67,40 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
 
   const remarkValue = form.watch('remark');
 
-  const handleSuggest = React.useCallback(async () => {
-    if (!remarkValue || remarkValue.length < 10) return;
+  const handleSuggest = async () => {
+    if (!remarkValue || remarkValue.length < 10) {
+      toast({
+        title: "Remark is too short",
+        description: "Please enter at least 10 characters in the remark field to get a suggestion.",
+        variant: "destructive"
+      })
+      return;
+    };
     setIsSuggesting(true);
-    setSuggestion(null);
     try {
       const response = await fetch('/api/genkit/flows/suggestDisposition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           remarks: remarkValue,
-          historicalData: JSON.stringify(history.slice(0, 5)), // Send recent history
+          historicalData: JSON.stringify(history.slice(0, 5)),
         }),
       });
       if (!response.ok) {
         throw new Error('Failed to get suggestion');
       }
-      const data = await response.json();
-      setSuggestion(data);
+      const data: SuggestionResponse = await response.json();
+      
+      if (data.suggestedSubDisposition && subDispositions.includes(data.suggestedSubDisposition)) {
+        form.setValue('subDisposition', data.suggestedSubDisposition);
+        toast({
+          title: "AI Suggestion Applied!",
+          description: `Sub-disposition set to "${data.suggestedSubDisposition}". (Confidence: ${Math.round(data.confidenceScore * 100)}%)`,
+        });
+      } else {
+         toast({ title: "Unknown Suggestion", description: `The AI suggested "${data.suggestedSubDisposition}", which is not a valid option. Please select one manually.`, variant: "destructive" });
+      }
+
     } catch (error) {
       toast({
         title: "Suggestion Failed",
@@ -96,19 +110,7 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
     } finally {
       setIsSuggesting(false);
     }
-  }, [remarkValue, history, toast]);
-  
-  const useSuggestion = () => {
-    if (suggestion) {
-      const subDisp = suggestion.suggestedSubDisposition;
-      if (subDispositions.includes(subDisp)) {
-        form.setValue('subDisposition', subDisp);
-        toast({ title: "Suggestion applied!", description: `Set sub-disposition to "${subDisp}".` });
-      } else {
-        toast({ title: "Unknown Suggestion", description: `The AI suggested "${subDisp}", which is not a valid option. Please select one manually.`, variant: "destructive" });
-      }
-    }
-  }
+  };
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true);
@@ -116,7 +118,6 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
       await addAssignment(leadId, 'usr_3', data.disposition, data.subDisposition, data.remark);
       
       form.reset({ remark: '', nextLead: data.nextLead });
-      setSuggestion(null);
 
       if (data.nextLead) {
         const currentIndex = myLeads.findIndex(l => l.refId === leadId);
@@ -163,7 +164,7 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
           render={({ field }) => (
             <FormItem>
               <FormLabel>Disposition</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValuechange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger disabled={isSubmitting}>
                     <SelectValue placeholder="Select a disposition" />
@@ -195,38 +196,35 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
             </FormItem>
           )}
         />
-        <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSuggest}
-            disabled={isSuggesting || !remarkValue || remarkValue.length < 10 || isSubmitting}
-            className="w-full"
-        >
-            <BrainCircuit className="mr-2 h-4 w-4" />
-            {isSuggesting ? 'Analyzing...' : 'Suggest Sub-Disposition'}
-        </Button>
-
-        {isSuggesting && <Progress value={50} className="h-1 w-full" />}
-        {suggestion && (
-          <div className="p-3 bg-secondary/50 rounded-lg space-y-2 border border-dashed">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold flex items-center gap-2"><Zap className="w-4 h-4 text-yellow-500" /> AI Suggestion</h4>
-              <Badge variant="outline" className="text-xs">
-                Confidence: {Math.round(suggestion.confidenceScore * 100)}%
-              </Badge>
-            </div>
-            <p className="text-sm text-center font-medium p-2 bg-background rounded-md">{suggestion.suggestedSubDisposition}</p>
-            <Button type="button" size="sm" className="w-full h-8" onClick={useSuggestion} disabled={isSubmitting}><Wand2 className="w-4 h-4 mr-2"/> Use this suggestion</Button>
-          </div>
-        )}
-
+       
         <FormField
           control={form.control}
           name="subDisposition"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Sub-Disposition</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Sub-Disposition</FormLabel>
+                 <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleSuggest}
+                            disabled={isSuggesting || isSubmitting || !remarkValue || remarkValue.length < 10}
+                            className="h-7 w-7"
+                          >
+                           <BrainCircuit className="h-4 w-4" />
+                           <span className="sr-only">Suggest Sub-Disposition</span>
+                         </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Suggest with AI</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+              </div>
               <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                 <FormControl>
                   <SelectTrigger disabled={isSubmitting}>
