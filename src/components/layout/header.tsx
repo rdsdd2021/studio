@@ -11,6 +11,8 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet"
 import {
   Avatar,
@@ -25,19 +27,21 @@ import { navItems } from "@/lib/nav-items"
 export function Header() {
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-card px-4 sm:px-6">
-       <div className="flex items-center gap-4">
+       <div className="flex items-center gap-4 sm:hidden">
         <Sheet>
           <SheetTrigger asChild>
             <Button
               variant="outline"
               size="icon"
-              className="shrink-0 sm:hidden"
+              className="shrink-0"
             >
               <Menu className="h-5 w-5" />
               <span className="sr-only">Toggle navigation menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left">
+            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+            <SheetDescription className="sr-only">A list of pages to navigate to.</SheetDescription>
             <nav className="grid gap-6 text-lg font-medium">
               <Link
                 href="/dashboard"
