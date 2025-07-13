@@ -18,17 +18,32 @@ export const loginActivity: LoginActivity[] = [
 
 const campaigns = ['Summer Fest 2024', 'Diwali Dhamaka', 'New Year Bonanza', 'Winter Workshop'];
 
-export const leads: Lead[] = Array.from({ length: 50 }, (_, i) => ({
-  refId: `LD${1001 + i}`,
-  name: `Lead Name ${i + 1}`,
-  phone: `98765432${i.toString().padStart(2, '0')}`,
-  gender: i % 2 === 0 ? 'Male' : 'Female',
-  school: `School #${(i % 5) + 1}`,
-  locality: `Locality ${(i % 10) + 1}`,
-  district: `District ${(i % 3) + 1}`,
-  createdAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString(),
-  campaign: i < 25 ? campaigns[i % campaigns.length] : undefined,
-}));
+export const leads: Lead[] = Array.from({ length: 50 }, (_, i) => {
+  const lead: Lead = {
+    refId: `LD${1001 + i}`,
+    name: `Lead Name ${i + 1}`,
+    phone: `98765432${i.toString().padStart(2, '0')}`,
+    gender: i % 2 === 0 ? 'Male' : 'Female',
+    school: `School #${(i % 5) + 1}`,
+    locality: `Locality ${(i % 10) + 1}`,
+    district: `District ${(i % 3) + 1}`,
+    createdAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString(),
+    campaign: i < 25 ? campaigns[i % campaigns.length] : undefined,
+    customFields: {},
+  };
+
+  // Add some mock custom fields
+  if (i === 0) {
+    lead.customFields = { source: 'Facebook Ad', previousCourse: 'None' };
+  }
+  if (i === 1) {
+    lead.customFields = { source: 'Google Search' };
+  }
+   if (i === 2 && lead.campaign === 'Summer Fest 2024') {
+    lead.customFields = { parentsName: 'Mr. Sharma', discountCode: 'SUMMER24' };
+  }
+  return lead;
+});
 
 const dispositions: Disposition[] = ['New', 'Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 const subDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];

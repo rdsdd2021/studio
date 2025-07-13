@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AssignmentHistory } from '@/components/leads/assignment-history';
 import { UpdateDispositionForm } from '@/components/leads/update-disposition-form';
-import { User, Phone, School, MapPin, Milestone, Calendar } from 'lucide-react';
+import { User, Phone, School, MapPin, Milestone, Calendar, Info } from 'lucide-react';
 import type { Assignment, Lead } from '@/lib/types';
 import { LeadDetailHeader } from '@/components/leads/lead-detail-header';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,8 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   // Mocking the current user as a caller
   const currentUserRole = 'caller';
+
+  const hasCustomFields = lead.customFields && Object.keys(lead.customFields).length > 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -115,6 +117,27 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
               </div>
             </CardContent>
           </Card>
+          
+          {hasCustomFields && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Additional Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {Object.entries(lead.customFields!).map(([key, value]) => (
+                     <div className="flex items-center gap-3" key={key}>
+                      <Info className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
+                        <p className="font-medium">{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

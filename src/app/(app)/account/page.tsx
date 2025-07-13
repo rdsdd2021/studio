@@ -40,14 +40,18 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { updateUser } from '@/actions/users'
 import type { User } from '@/lib/types'
-import { users } from '@/lib/data'
+import { leads, users } from '@/lib/data'
 import { useRouter } from 'next/navigation'
+import { Badge } from '@/components/ui/badge';
+import { PlusCircle, Tag, X } from 'lucide-react';
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
 })
+
+const uniqueCampaigns = Array.from(new Set(leads.map(l => l.campaign).filter(Boolean)));
 
 export default function AccountPage() {
   const router = useRouter()
@@ -86,6 +90,13 @@ export default function AccountPage() {
     }
   }
 
+  // Mock state for custom fields UI - in a real app this would come from a DB
+  const [universalFields, setUniversalFields] = React.useState(['Source', 'Previous Course']);
+  const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({
+    'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
+    'Diwali Dhamaka': ["Reference ID"],
+  });
+  const [selectedCampaign, setSelectedCampaign] = React.useState(uniqueCampaigns[0] || '');
 
   return (
     <div className="flex flex-col gap-8">
@@ -95,9 +106,10 @@ export default function AccountPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <Card>
@@ -209,6 +221,66 @@ export default function AccountPage() {
                 <Button>Save Settings</Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+        <TabsContent value="custom-fields">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Universal Custom Fields</CardTitle>
+                <CardDescription>
+                  These fields will appear for all leads, regardless of their campaign.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {universalFields.map(field => (
+                    <Badge key={field} variant="secondary" className="text-base py-1 pl-3 pr-2">
+                      {field}
+                      <Button variant="ghost" size="icon" className="h-5 w-5 ml-1"><X className="h-3 w-3" /></Button>
+                    </Badge>
+                  ))}
+                </div>
+                <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Universal Field</Button>
+              </CardContent>
+            </Card>
+
+             <Card>
+              <CardHeader>
+                <CardTitle>Campaign-Specific Custom Fields</CardTitle>
+                <CardDescription>
+                  Define custom fields that only apply to leads within a specific campaign.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="max-w-xs">
+                    <Label htmlFor="campaign-select">Select a Campaign</Label>
+                     <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+                        <SelectTrigger id="campaign-select">
+                            <SelectValue placeholder="Select a campaign..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {uniqueCampaigns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {selectedCampaign && (
+                    <div className="border-t pt-4 mt-4">
+                         <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" /> Fields for "{selectedCampaign}"</h4>
+                         <div className="flex flex-wrap gap-2">
+                            {(campaignFields[selectedCampaign] || []).map(field => (
+                                <Badge key={field} variant="outline" className="text-base py-1 pl-3 pr-2">
+                                    {field}
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1"><X className="h-3 w-3" /></Button>
+                                </Badge>
+                            ))}
+                        </div>
+                        <Button variant="outline" size="sm" className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add Field for Campaign</Button>
+                    </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
