@@ -42,16 +42,30 @@ const dispositionVariant: Record<Disposition, "default" | "secondary" | "destruc
 export const columns: ColumnDef<LeadData>[] = [
   {
     id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
+    header: ({ table }) => {
+      const { setIsAllFilteredRowsSelected } = table.options.meta as any;
+      const isAllFilteredSelected = (table.options.meta as any)?.isAllFilteredRowsSelected;
+
+      const handleCheckedChange = (value: boolean | 'indeterminate') => {
+        if (value === true) {
+          table.toggleAllPageRowsSelected(true);
+          setIsAllFilteredRowsSelected(true);
+        } else {
+          table.toggleAllPageRowsSelected(false);
+          setIsAllFilteredRowsSelected(false);
         }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
+      };
+
+      return (
+        <Checkbox
+          checked={
+            isAllFilteredSelected ? true : (table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected())
+          }
+          onCheckedChange={handleCheckedChange}
+          aria-label="Select all"
+        />
+      );
+    },
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}

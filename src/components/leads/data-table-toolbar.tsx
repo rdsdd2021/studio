@@ -12,6 +12,7 @@ import { DataTableFacetedFilter } from './data-table-faceted-filter'
 import type { Disposition } from '@/lib/types'
 import { ImportLeadsDialog } from './import-leads-dialog'
 import { UpdateCampaignDialog } from './update-campaign-dialog'
+import { Alert, AlertDescription } from '../ui/alert'
 
 const dispositions: {label: Disposition, value: Disposition}[] = [
   { label: 'New', value: 'New' },
@@ -47,12 +48,30 @@ export function DataTableToolbar<TData>({
   campaignOptions,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0 || !!table.getState().globalFilter;
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedLeadIds = selectedRows.map(row => (row.original as LeadData).refId);
 
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
   const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
+
+  const { isAllFilteredRowsSelected, setIsAllFilteredRowsSelected } = table.options.meta as any;
+
+  let selectedLeadIds: string[] = [];
+  let leadCount = 0;
+
+  if (isAllFilteredRowsSelected) {
+    selectedLeadIds = table.getFilteredRowModel().rows.map(row => (row.original as LeadData).refId);
+    leadCount = table.getFilteredRowModel().rows.length;
+  } else {
+    selectedLeadIds = table.getFilteredSelectedRowModel().rows.map(row => (row.original as LeadData).refId);
+    leadCount = table.getFilteredSelectedRowModel().rows.length;
+  }
+
+  const handleReset = () => {
+    table.resetColumnFilters();
+    table.setGlobalFilter('');
+    table.resetRowSelection();
+    setIsAllFilteredRowsSelected(false);
+  }
 
   return (
     <>
@@ -118,10 +137,7 @@ export function DataTableToolbar<TData>({
           {isFiltered && (
             <Button
               variant="ghost"
-              onClick={() => {
-                table.resetColumnFilters();
-                table.setGlobalFilter('');
-              }}
+              onClick={handleReset}
               className="h-8 px-2 lg:px-3"
             >
               Reset
@@ -134,7 +150,7 @@ export function DataTableToolbar<TData>({
               <Upload className="mr-2 h-4 w-4" />
               Import
             </Button>
-            {selectedRows.length > 0 && (
+            {leadCount > 0 && (
               <>
                 <Button size="sm" variant="outline" className="h-8" onClick={() => setIsCampaignDialogOpen(true)}>
                   <Tag className="mr-2 h-4 w-4" />
@@ -142,12 +158,21 @@ export function DataTableToolbar<TData>({
                 </Button>
                 <Button size="sm" className="h-8" onClick={() => setIsAssignDialogOpen(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Assign ({selectedRows.length})
+                  Assign ({leadCount})
                 </Button>
               </>
               )}
         </div>
       </div>
+
+       {isAllFilteredRowsSelected && (
+        <Alert>
+          <AlertDescription>
+            All {leadCount} rows matching the current filters are selected. Any bulk action will apply to all of them.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <AssignLeadsDialog
         isOpen={isAssignDialogOpen}
         onOpenChange={setIsAssignDialogOpen}

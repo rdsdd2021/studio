@@ -52,7 +52,8 @@ export function UpdateCampaignDialog({
       })
       onOpenChange(false)
       setCampaign('')
-      setTimeout(() => router.refresh(), 1000)
+      // A full refresh may be needed to clear selections and states
+      window.location.reload();
     } catch (error) {
       toast({
         title: 'Update Failed',
@@ -63,6 +64,13 @@ export function UpdateCampaignDialog({
       setIsSubmitting(false)
     }
   }
+
+  // Reset campaign input when dialog is reopened with new lead selection
+  React.useEffect(() => {
+    if(isOpen) {
+      setCampaign('');
+    }
+  }, [isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
