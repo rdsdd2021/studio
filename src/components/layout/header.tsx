@@ -26,11 +26,14 @@ import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { LeadsFlowLogo } from "../icons"
 import { navItems } from "@/lib/nav-items"
-import { users } from "@/lib/data"
 
 export function Header() {
-  // In a real app, this would come from an auth context
-  const currentUser = users.find(u => u.role === 'admin');
+  // In a real app, this would come from an auth context.
+  // For now, we mock a user to prevent build errors.
+  const currentUser = {
+    name: 'Admin User',
+    avatar: 'https://placehold.co/32x32.png',
+  };
   const nameFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
 
   return (
