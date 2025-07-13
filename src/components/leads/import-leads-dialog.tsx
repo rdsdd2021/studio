@@ -13,18 +13,32 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { importLeads } from '@/actions/leads'
 import type { Lead } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
-import { Lightbulb } from 'lucide-react'
+import { Lightbulb, FileQuestion, Map } from 'lucide-react'
 
 interface ImportLeadsDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
 }
 
-const requiredFields = ['name', 'phone', 'gender', 'school', 'locality', 'district'];
+const requiredFields = ['name', 'phone'];
+// MOCK: In real app, this would be fetched
+const uniqueCampaigns: string[] = ['Summer Fest 2024', 'Diwali Dhamaka'];
+const campaignFields: Record<string, string[]> = {
+    'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
+    'Diwali Dhamaka': ["Reference ID"],
+};
 
 export function ImportLeadsDialog({
   isOpen,
@@ -34,42 +48,78 @@ export function ImportLeadsDialog({
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [file, setFile] = React.useState<File | null>(null);
+  const [parsedData, setParsedData] = React.useState<any[]>([]);
+  const [headers, setHeaders] = React.useState<string[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = React.useState<string>('');
+  const [fieldMapping, setFieldMapping] = React.useState<Record<string, string>>({});
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setFile(event.target.files[0]);
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+        setFile(selectedFile);
+        Papa.parse(selectedFile, {
+            header: true,
+            skipEmptyLines: true,
+            preview: 5, // Just need headers and a few rows for validation
+            complete: (results) => {
+                const fileHeaders = results.meta.fields || [];
+                const missingHeaders = requiredFields.filter(h => !fileHeaders.includes(h));
+
+                if (missingHeaders.length > 0) {
+                    toast({
+                        title: 'Missing Required Columns',
+                        description: `Your CSV is missing the following required columns: ${missingHeaders.join(', ')}. Please fix the file and re-upload.`,
+                        variant: 'destructive',
+                        duration: 10000
+                    });
+                    resetState();
+                    return;
+                }
+                setHeaders(fileHeaders);
+                setParsedData(results.data);
+            },
+        });
     }
   };
 
+  const resetState = () => {
+    setFile(null);
+    setParsedData([]);
+    setHeaders([]);
+    setSelectedCampaign('');
+    setFieldMapping({});
+    const fileInput = document.getElementById('csv-file') as HTMLInputElement;
+    if(fileInput) fileInput.value = '';
+  }
+  
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+        resetState();
+    }
+    onOpenChange(open);
+  }
+
+  const handleMappingChange = (customField: string, csvHeader: string) => {
+    setFieldMapping(prev => ({...prev, [customField]: csvHeader}));
+  }
+
   const handleSubmit = async () => {
     if (!file) {
-        toast({ title: 'No file selected', description: 'Please select a CSV file to import.', variant: 'destructive' });
-        return;
+      toast({ title: 'No file selected', description: 'Please select a CSV file.', variant: 'destructive' });
+      return;
     }
-
+    
     setIsSubmitting(true);
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const headers = results.meta.fields || [];
-        const missingHeaders = requiredFields.filter(h => !headers.includes(h));
-
-        if (missingHeaders.length > 0) {
-            toast({
-                title: 'Missing Required Columns',
-                description: `Your CSV is missing the following columns: ${missingHeaders.join(', ')}`,
-                variant: 'destructive'
-            });
-            setIsSubmitting(false);
-            return;
-        }
-
-        const newLeads = results.data.map((row: any) => {
-            const leadData: Omit<Lead, 'refId' | 'createdAt' | 'customFields'> = {
+        const leadsToImport = results.data.map((row: any) => {
+            const leadData: Partial<Lead> = {
                 name: row.name,
                 phone: row.phone,
+                // These are optional standard fields
                 gender: row.gender,
                 school: row.school,
                 locality: row.locality,
@@ -77,74 +127,112 @@ export function ImportLeadsDialog({
             };
 
             const customFields: Record<string, any> = {};
-            for (const key in row) {
-                if (!requiredFields.includes(key)) {
-                    customFields[key] = row[key];
-                }
+            if(selectedCampaign && campaignFields[selectedCampaign]) {
+                campaignFields[selectedCampaign].forEach(field => {
+                    const mappedHeader = fieldMapping[field];
+                    if(mappedHeader && row[mappedHeader]) {
+                        customFields[field] = row[mappedHeader];
+                    }
+                })
             }
-            
-            return { ...leadData, customFields };
+            leadData.customFields = customFields;
+            return leadData;
         });
 
         try {
-            const result = await importLeads(newLeads);
-            toast({
-                title: 'Import Successful!',
-                description: `${result.count} leads have been imported successfully.`,
-            })
-            onOpenChange(false);
-            setFile(null);
-            setTimeout(() => router.refresh(), 1000);
+          await importLeads(leadsToImport, selectedCampaign);
+          toast({
+            title: 'Import Successful!',
+            description: `${leadsToImport.length} leads have been imported.`,
+          });
+          handleDialogClose(false);
+          router.refresh();
         } catch (error) {
-            toast({
-                title: 'Import Failed',
-                description: 'Could not import leads. Please check the file and try again.',
-                variant: 'destructive',
-            })
+          toast({
+            title: 'Import Failed',
+            description: 'An error occurred during import. Please try again.',
+            variant: 'destructive',
+          });
         } finally {
-            setIsSubmitting(false);
+          setIsSubmitting(false);
         }
       },
-      error: (error) => {
-        toast({
-            title: 'Parsing Error',
-            description: `Error parsing CSV file: ${error.message}`,
-            variant: 'destructive'
-        });
+      error: (err) => {
+        toast({ title: 'CSV Parsing Error', description: err.message, variant: 'destructive' });
         setIsSubmitting(false);
       }
     });
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Import Leads from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file to bulk-add new leads. The file must contain the required columns.
+            Upload a CSV file to bulk-add new leads. `name` and `phone` are required.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <Alert>
                 <Lightbulb className="h-4 w-4" />
-                <AlertTitle>Required Columns</AlertTitle>
+                <AlertTitle>File Requirements</AlertTitle>
                 <AlertDescription className="text-xs">
-                    name, phone, gender, school, locality, district.
-                    <br />
-                    Any additional columns will be saved as custom fields.
+                    Your CSV must contain `name` and `phone` columns. Other standard fields like `gender`, `school`, `locality`, and `district` are optional.
                 </AlertDescription>
             </Alert>
-            <Input
-                id="csv-file"
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                disabled={isSubmitting}
-            />
+            <div className="space-y-2">
+                <Label htmlFor='csv-file'>1. Upload CSV File</Label>
+                <Input
+                    id="csv-file"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    disabled={isSubmitting}
+                />
+            </div>
+
+            {headers.length > 0 && (
+                <>
+                <div className="space-y-2">
+                    <Label htmlFor='campaign-select'>2. Select Campaign (Optional)</Label>
+                    <Select value={selectedCampaign} onValueChange={setSelectedCampaign} disabled={isSubmitting}>
+                        <SelectTrigger id="campaign-select">
+                            <SelectValue placeholder="No specific campaign" />
+                        </SelectTrigger>
+                        <SelectContent>
+                             <SelectItem value="">No specific campaign</SelectItem>
+                            {uniqueCampaigns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Selecting a campaign allows you to map campaign-specific fields.</p>
+                </div>
+
+                {selectedCampaign && campaignFields[selectedCampaign] && (
+                    <div className="space-y-4 rounded-md border p-4">
+                        <h4 className="font-semibold flex items-center gap-2"><Map className="h-4 w-4" /> Map Campaign Fields for "{selectedCampaign}"</h4>
+                        {campaignFields[selectedCampaign].map(field => (
+                            <div key={field} className="grid grid-cols-2 items-center gap-4">
+                                <Label htmlFor={`map-${field}`}>{field}</Label>
+                                <Select onValueChange={(value) => handleMappingChange(field, value)} disabled={isSubmitting}>
+                                    <SelectTrigger id={`map-${field}`}>
+                                        <SelectValue placeholder="Select CSV column..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">-- Do not map --</SelectItem>
+                                        {headers.map(header => <SelectItem key={header} value={header}>{header}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                </>
+            )}
+
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button type="button" variant="outline" onClick={() => handleDialogClose(false)} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={isSubmitting || !file}>

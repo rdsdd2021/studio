@@ -83,20 +83,31 @@ export async function assignLeads(leadIds: string[], userId: string): Promise<As
     return JSON.parse(JSON.stringify(newAssignments));
 }
 
-export async function importLeads(newLeads: Omit<Lead, 'refId' | 'createdAt'>[]): Promise<{ count: number }> {
+export async function importLeads(
+  newLeads: Partial<Lead>[],
+  campaign?: string
+): Promise<{ count: number }> {
     const now = new Date().toISOString();
     
-    newLeads.forEach((lead) => {
+    newLeads.forEach((leadData) => {
         const newLead: Lead = {
-            ...lead,
+            name: leadData.name || 'N/A',
+            phone: leadData.phone || 'N/A',
+            gender: leadData.gender || 'Other',
+            school: leadData.school || 'N/A',
+            locality: leadData.locality || 'N/A',
+            district: leadData.district || 'N/A',
             refId: `lead_${Date.now()}_${Math.random().toString(36).substring(7)}`,
             createdAt: now,
+            campaign: campaign || leadData.campaign,
+            customFields: leadData.customFields || {},
         };
         leads.unshift(newLead);
     });
     
     return { count: newLeads.length };
 }
+
 
 export async function updateCampaignForLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
     let updatedCount = 0;
