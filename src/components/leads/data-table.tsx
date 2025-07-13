@@ -36,10 +36,10 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   callers?: Option[];
-  schoolOptions: Option[];
-  localityOptions: Option[];
-  districtOptions: Option[];
-  genderOptions: Option[];
+  schoolOptions?: Option[];
+  localityOptions?: Option[];
+  districtOptions?: Option[];
+  genderOptions?: Option[];
 }
 
 export function DataTable<TData, TValue>({

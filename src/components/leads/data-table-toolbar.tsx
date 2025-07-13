@@ -29,10 +29,10 @@ interface Option {
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
   callers?: Option[];
-  schoolOptions: Option[];
-  localityOptions: Option[];
-  districtOptions: Option[];
-  genderOptions: Option[];
+  schoolOptions?: Option[];
+  localityOptions?: Option[];
+  districtOptions?: Option[];
+  genderOptions?: Option[];
 }
 
 export function DataTableToolbar<TData>({
@@ -76,28 +76,28 @@ export function DataTableToolbar<TData>({
               options={callers}
             />
           )}
-          {table.getColumn("school") && (
+          {schoolOptions && table.getColumn("school") && (
             <DataTableFacetedFilter
               column={table.getColumn("school")}
               title="School"
               options={schoolOptions}
             />
           )}
-          {table.getColumn("locality") && (
+          {localityOptions && table.getColumn("locality") && (
             <DataTableFacetedFilter
               column={table.getColumn("locality")}
               title="Locality"
               options={localityOptions}
             />
           )}
-          {table.getColumn("district") && (
+          {districtOptions && table.getColumn("district") && (
             <DataTableFacetedFilter
               column={table.getColumn("district")}
               title="District"
               options={districtOptions}
             />
           )}
-          {table.getColumn("gender") && (
+          {genderOptions && table.getColumn("gender") && (
             <DataTableFacetedFilter
               column={table.getColumn("gender")}
               title="Gender"

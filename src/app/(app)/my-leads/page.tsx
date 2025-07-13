@@ -46,7 +46,14 @@ export default async function MyLeadsPage() {
           Here are the leads assigned to you.
         </p>
       </div>
-      <DataTable columns={columns} data={data} />
+      <DataTable 
+        columns={columns} 
+        data={data} 
+        schoolOptions={[]}
+        localityOptions={[]}
+        districtOptions={[]}
+        genderOptions={[]}
+      />
     </div>
   )
 }
