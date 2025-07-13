@@ -22,7 +22,8 @@ export type LeadData = {
   disposition: Disposition
   assignedTo?: string
   assignedTime?: string
-  school: string
+  school: string,
+  customFields?: Record<string, any>
 }
 
 const dispositionVariant: Record<Disposition, "default" | "secondary" | "destructive"> = {
@@ -85,14 +86,20 @@ export const columns: ColumnDef<LeadData>[] = [
         return (
             <Badge variant={dispositionVariant[disposition] || 'secondary'} className={cn(disposition === 'Interested' && 'bg-green-600')}>{disposition}</Badge>
         )
-    }
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
   },
   {
     accessorKey: 'assignedTo',
     header: 'Assigned To',
     cell: ({ row }) => {
         return row.getValue('assignedTo') || <span className='text-muted-foreground'>Unassigned</span>
-    }
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
   },
   {
     accessorKey: 'assignedTime',

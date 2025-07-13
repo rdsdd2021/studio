@@ -73,3 +73,18 @@ export async function assignLeads(leadIds: string[], userId: string): Promise<As
     }
     return newAssignments;
 }
+
+export async function importLeads(newLeads: Omit<Lead, 'refId' | 'createdAt'>[]): Promise<{ count: number }> {
+    const startingId = Math.max(...leads.map(l => parseInt(l.refId.replace('LD', ''), 10))) + 1;
+    
+    newLeads.forEach((lead, index) => {
+        const newLead: Lead = {
+            ...lead,
+            refId: `LD${startingId + index}`,
+            createdAt: new Date().toISOString(),
+        };
+        leads.unshift(newLead);
+    });
+    
+    return { count: newLeads.length };
+}

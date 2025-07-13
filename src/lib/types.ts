@@ -17,6 +17,7 @@ export interface Lead {
   locality: string;
   district: string;
   createdAt: string;
+  customFields?: Record<string, any>;
 }
 
 export type Disposition = 'New' | 'Interested' | 'Not Interested' | 'Follow-up' | 'Callback' | 'Not Reachable';

@@ -41,8 +41,12 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = React.useState({})
+  const [globalFilter, setGlobalFilter] = React.useState('')
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({
+        disposition: true,
+        assignedTo: true,
+    })
 
   const table = useReactTable({
     data,
@@ -55,6 +59,7 @@ export function DataTable<TData, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
     getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     state: {
@@ -62,6 +67,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
       rowSelection,
       columnVisibility,
+      globalFilter,
     },
   })
 
