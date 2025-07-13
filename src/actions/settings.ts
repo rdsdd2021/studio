@@ -1,6 +1,6 @@
 'use server'
 
-import { db } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 
 export interface GeofenceSettings {
     centerLocation: string;
@@ -8,6 +8,7 @@ export interface GeofenceSettings {
 }
 
 export async function getGeofenceSettings(): Promise<GeofenceSettings> {
+    const db = getDb();
     const doc = await db.collection('settings').doc('geofence').get();
     if (!doc.exists) {
         return { centerLocation: '', radius: 5000 };
@@ -17,5 +18,6 @@ export async function getGeofenceSettings(): Promise<GeofenceSettings> {
 }
 
 export async function saveGeofenceSettings(settings: GeofenceSettings): Promise<void> {
+    const db = getDb();
     await db.collection('settings').doc('geofence').set(settings);
 }

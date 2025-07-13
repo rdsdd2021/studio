@@ -1,11 +1,12 @@
 'use server'
 
-import { db } from "@/lib/firebase"
+import { getDb } from "@/lib/firebase"
 import type { User } from "@/lib/types"
 import { revalidatePath } from "next/cache"
 import { FieldValue } from "firebase-admin/firestore";
 
 async function docToUser(doc: FirebaseFirestore.DocumentSnapshot): Promise<User> {
+    const db = getDb();
     const data = doc.data();
     if (!data) throw new Error("Document data is empty");
     return {
@@ -20,6 +21,7 @@ async function docToUser(doc: FirebaseFirestore.DocumentSnapshot): Promise<User>
 }
 
 export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
+  const db = getDb();
   const userRef = db.collection('users').doc(userId);
   await userRef.update(data);
   const updatedDoc = await userRef.get();
@@ -29,6 +31,7 @@ export async function updateUser(userId: string, data: Partial<Omit<User, 'id' |
 }
 
 export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status'>): Promise<User> {
+  const db = getDb();
   const newUserRef = db.collection('users').doc();
   const newUser: Omit<User, 'id'> = {
     ...data,
@@ -51,6 +54,7 @@ export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | '
 }
 
 export async function toggleUserStatus(userId: string): Promise<User> {
+    const db = getDb();
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -66,6 +70,7 @@ export async function toggleUserStatus(userId: string): Promise<User> {
 }
 
 export async function approveUser(userId: string): Promise<User> {
+    const db = getDb();
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {

@@ -1,10 +1,11 @@
 'use server'
 
-import { db } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 import type { Lead, Assignment, Disposition, SubDisposition } from "@/lib/types"
 import { FieldValue } from "firebase-admin/firestore";
 
 async function docToLead(doc: FirebaseFirestore.DocumentSnapshot): Promise<Lead> {
+    const db = getDb();
     const data = doc.data();
     if (!data) throw new Error("Document data is empty");
     return {
@@ -22,6 +23,7 @@ async function docToLead(doc: FirebaseFirestore.DocumentSnapshot): Promise<Lead>
 }
 
 async function docToAssignment(doc: FirebaseFirestore.DocumentSnapshot): Promise<Assignment> {
+    const db = getDb();
     const data = doc.data();
     if (!data) throw new Error("Document data is empty");
     return {
@@ -40,22 +42,26 @@ async function docToAssignment(doc: FirebaseFirestore.DocumentSnapshot): Promise
 
 
 export async function getLeads(): Promise<Lead[]> {
+  const db = getDb();
   const snapshot = await db.collection('leads').orderBy('createdAt', 'desc').get();
   return Promise.all(snapshot.docs.map(docToLead));
 }
 
 export async function getAssignments(): Promise<Assignment[]> {
+    const db = getDb();
     const snapshot = await db.collectionGroup('assignments').orderBy('assignedTime', 'desc').get();
     return Promise.all(snapshot.docs.map(docToAssignment));
 }
 
 export async function getLeadDetails(id: string): Promise<Lead | undefined> {
+  const db = getDb();
   const doc = await db.collection('leads').doc(id).get();
   if (!doc.exists) return undefined;
   return docToLead(doc);
 }
 
 export async function getAssignmentHistory(leadId: string): Promise<Assignment[]> {
+  const db = getDb();
   const snapshot = await db.collection('leads').doc(leadId).collection('assignments').orderBy('assignedTime', 'desc').get();
   return Promise.all(snapshot.docs.map(docToAssignment));
 }
@@ -67,6 +73,7 @@ export async function addAssignment(
   subDisposition: SubDisposition,
   remark: string
 ): Promise<Assignment> {
+  const db = getDb();
   const userDoc = await db.collection('users').doc(userId).get();
   const user = userDoc.data();
   if (!user) {
@@ -92,6 +99,7 @@ export async function addAssignment(
 }
 
 export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
+    const db = getDb();
     const userDoc = await db.collection('users').doc(userId).get();
     const user = userDoc.data();
     if (!user) {
@@ -120,6 +128,7 @@ export async function assignLeads(leadIds: string[], userId: string): Promise<As
 }
 
 export async function importLeads(newLeads: Omit<Lead, 'refId' | 'createdAt'>[]): Promise<{ count: number }> {
+    const db = getDb();
     const batch = db.batch();
     
     newLeads.forEach((lead) => {
@@ -136,6 +145,7 @@ export async function importLeads(newLeads: Omit<Lead, 'refId' | 'createdAt'>[])
 }
 
 export async function updateCampaignForLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
+    const db = getDb();
     const batch = db.batch();
     leadIds.forEach(leadId => {
         const leadRef = db.collection('leads').doc(leadId);
