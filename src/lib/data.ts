@@ -16,6 +16,8 @@ export const loginActivity: LoginActivity[] = [
     { id: 'act_4', userId: 'usr_2', userName: 'Jane Doe', timestamp: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(), activity: 'logout', ipAddress: '203.0.113.25', device: 'Safari on iPhone' },
 ];
 
+const campaigns = ['Summer Fest 2024', 'Diwali Dhamaka', 'New Year Bonanza', 'Winter Workshop'];
+
 export const leads: Lead[] = Array.from({ length: 50 }, (_, i) => ({
   refId: `LD${1001 + i}`,
   name: `Lead Name ${i + 1}`,
@@ -25,6 +27,7 @@ export const leads: Lead[] = Array.from({ length: 50 }, (_, i) => ({
   locality: `Locality ${(i % 10) + 1}`,
   district: `District ${(i % 3) + 1}`,
   createdAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString(),
+  campaign: i < 25 ? campaigns[i % campaigns.length] : undefined,
 }));
 
 const dispositions: Disposition[] = ['New', 'Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];

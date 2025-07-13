@@ -4,13 +4,14 @@ import * as React from 'react'
 import { Table } from '@tanstack/react-table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { UserPlus, X, Upload } from 'lucide-react'
+import { UserPlus, X, Upload, Tag } from 'lucide-react'
 import { AssignLeadsDialog } from './assign-leads-dialog'
 import { users } from '@/lib/data' 
 import type { LeadData } from './columns'
 import { DataTableFacetedFilter } from './data-table-faceted-filter'
 import type { Disposition } from '@/lib/types'
 import { ImportLeadsDialog } from './import-leads-dialog'
+import { UpdateCampaignDialog } from './update-campaign-dialog'
 
 const dispositions: {label: Disposition, value: Disposition}[] = [
   { label: 'New', value: 'New' },
@@ -33,6 +34,7 @@ interface DataTableToolbarProps<TData> {
   localityOptions?: Option[];
   districtOptions?: Option[];
   genderOptions?: Option[];
+  campaignOptions?: Option[];
 }
 
 export function DataTableToolbar<TData>({
@@ -42,6 +44,7 @@ export function DataTableToolbar<TData>({
   localityOptions,
   districtOptions,
   genderOptions,
+  campaignOptions,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0 || !!table.getState().globalFilter;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -49,6 +52,7 @@ export function DataTableToolbar<TData>({
 
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
+  const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
 
   return (
     <>
@@ -74,6 +78,13 @@ export function DataTableToolbar<TData>({
               column={table.getColumn("assignedTo")}
               title="Caller"
               options={callers}
+            />
+          )}
+          {campaignOptions && table.getColumn("campaign") && (
+            <DataTableFacetedFilter
+              column={table.getColumn("campaign")}
+              title="Campaign"
+              options={campaignOptions}
             />
           )}
           {schoolOptions && table.getColumn("school") && (
@@ -124,10 +135,16 @@ export function DataTableToolbar<TData>({
               Import
             </Button>
             {selectedRows.length > 0 && (
+              <>
+                <Button size="sm" variant="outline" className="h-8" onClick={() => setIsCampaignDialogOpen(true)}>
+                  <Tag className="mr-2 h-4 w-4" />
+                  Update Campaign
+                </Button>
                 <Button size="sm" className="h-8" onClick={() => setIsAssignDialogOpen(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Assign ({selectedRows.length})
                 </Button>
+              </>
               )}
         </div>
       </div>
@@ -140,6 +157,11 @@ export function DataTableToolbar<TData>({
       <ImportLeadsDialog 
         isOpen={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
+      />
+      <UpdateCampaignDialog
+        isOpen={isCampaignDialogOpen}
+        onOpenChange={setIsCampaignDialogOpen}
+        leadIds={selectedLeadIds}
       />
     </>
   )

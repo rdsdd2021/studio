@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal, Phone } from 'lucide-react'
+import { MoreHorizontal, Phone, Tag } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { Disposition } from '@/lib/types'
@@ -26,6 +26,7 @@ export type LeadData = {
   disposition: Disposition
   assignedTo?: string
   assignedTime?: string
+  campaign?: string
   customFields?: Record<string, any>
 }
 
@@ -88,6 +89,20 @@ export const columns: ColumnDef<LeadData>[] = [
         </div>
       );
     }
+  },
+  {
+    accessorKey: 'campaign',
+    header: 'Campaign',
+    cell: ({ row }) => {
+      const campaign = row.getValue('campaign') as string | undefined;
+      if (!campaign) {
+        return <span className='text-muted-foreground'>N/A</span>
+      }
+      return <Badge variant="outline"><Tag className="mr-1 h-3 w-3" />{campaign}</Badge>
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
   },
   {
     accessorKey: 'school',

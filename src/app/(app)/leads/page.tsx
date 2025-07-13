@@ -29,7 +29,7 @@ export default async function LeadsPage() {
   const callers = users.filter(u => u.role === 'caller').map(u => ({ label: u.name, value: u.name }));
 
   const getUniqueOptions = (fieldName: keyof Lead) => {
-    const values = new Set(allLeads.map(lead => lead[fieldName]));
+    const values = new Set(allLeads.map(lead => lead[fieldName]).filter(Boolean));
     return Array.from(values).map(value => ({ label: String(value), value: String(value) }));
   }
 
@@ -37,6 +37,7 @@ export default async function LeadsPage() {
   const localityOptions = getUniqueOptions('locality');
   const districtOptions = getUniqueOptions('district');
   const genderOptions = getUniqueOptions('gender');
+  const campaignOptions = getUniqueOptions('campaign');
   
   return (
     <div className="container mx-auto py-2">
@@ -54,6 +55,7 @@ export default async function LeadsPage() {
         localityOptions={localityOptions}
         districtOptions={districtOptions}
         genderOptions={genderOptions}
+        campaignOptions={campaignOptions}
       />
     </div>
   )

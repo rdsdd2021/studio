@@ -88,3 +88,15 @@ export async function importLeads(newLeads: Omit<Lead, 'refId' | 'createdAt'>[])
     
     return { count: newLeads.length };
 }
+
+export async function updateCampaignForLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
+    let updatedCount = 0;
+    leadIds.forEach(leadId => {
+        const leadIndex = leads.findIndex(l => l.refId === leadId);
+        if (leadIndex !== -1) {
+            leads[leadIndex].campaign = campaign;
+            updatedCount++;
+        }
+    });
+    return { count: updatedCount };
+}

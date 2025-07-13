@@ -19,6 +19,7 @@ export interface Lead {
   locality: string;
   district: string;
   createdAt: string;
+  campaign?: string;
   customFields?: Record<string, any>;
 }
 

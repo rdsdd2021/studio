@@ -40,6 +40,7 @@ interface DataTableProps<TData, TValue> {
   localityOptions?: Option[];
   districtOptions?: Option[];
   genderOptions?: Option[];
+  campaignOptions?: Option[];
 }
 
 export function DataTable<TData, TValue>({
@@ -50,6 +51,7 @@ export function DataTable<TData, TValue>({
   localityOptions,
   districtOptions,
   genderOptions,
+  campaignOptions,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -63,6 +65,7 @@ export function DataTable<TData, TValue>({
         locality: true,
         district: true,
         gender: true,
+        campaign: true,
     })
 
   const table = useReactTable({
@@ -89,7 +92,7 @@ export function DataTable<TData, TValue>({
     },
   })
 
-  const showToolbar = !!(callers || schoolOptions || localityOptions || districtOptions || genderOptions);
+  const showToolbar = !!(callers || schoolOptions || localityOptions || districtOptions || genderOptions || campaignOptions);
 
   return (
     <div className="space-y-4">
@@ -101,6 +104,7 @@ export function DataTable<TData, TValue>({
           localityOptions={localityOptions}
           districtOptions={districtOptions}
           genderOptions={genderOptions}
+          campaignOptions={campaignOptions}
         />
       )}
       <div className="rounded-md border bg-card">
