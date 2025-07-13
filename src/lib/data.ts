@@ -1,12 +1,12 @@
 import type { User, Lead, Assignment, Disposition, SubDisposition, LoginActivity } from './types';
 
 export const users: User[] = [
-  { id: 'usr_1', name: 'Admin User', phone: '1112223331', role: 'admin', status: 'active', createdAt: '2023-01-15T09:30:00Z', avatar: '/avatars/01.png' },
-  { id: 'usr_2', name: 'Jane Doe', phone: '1112223332', role: 'caller', status: 'active', createdAt: '2023-01-16T10:00:00Z', avatar: '/avatars/02.png' },
-  { id: 'usr_3', name: 'John Smith', phone: '1112223333', role: 'caller', status: 'active', createdAt: '2023-01-17T11:45:00Z', avatar: '/avatars/03.png' },
-  { id: 'usr_4', name: 'Emily White', phone: '1112223334', role: 'caller', status: 'inactive', createdAt: '2023-01-18T14:00:00Z', avatar: '/avatars/04.png' },
-  { id: 'usr_5', name: 'Michael Brown', phone: '1112223335', role: 'caller', status: 'pending', createdAt: '2023-01-19T16:20:00Z', avatar: '/avatars/05.png' },
-  { id: 'usr_6', name: 'Jessica Green', phone: '1112223336', role: 'caller', status: 'pending', createdAt: '2023-01-20T10:15:00Z', avatar: 'https://placehold.co/32x32.png' },
+  { id: 'usr_1', name: 'Admin User', phone: '1112223331', role: 'admin', status: 'active', createdAt: '2023-01-15T09:30:00Z', avatar: '/avatars/01.png', latitude: 28.6139, longitude: 77.2090 },
+  { id: 'usr_2', name: 'Jane Doe', phone: '1112223332', role: 'caller', status: 'active', createdAt: '2023-01-16T10:00:00Z', avatar: '/avatars/02.png', latitude: 28.6145, longitude: 77.2100 },
+  { id: 'usr_3', name: 'John Smith', phone: '1112223333', role: 'caller', status: 'active', createdAt: '2023-01-17T11:45:00Z', avatar: '/avatars/03.png', latitude: 28.6130, longitude: 77.2085 },
+  { id: 'usr_4', name: 'Emily White', phone: '1112223334', role: 'caller', status: 'inactive', createdAt: '2023-01-18T14:00:00Z', avatar: '/avatars/04.png', latitude: 28.7041, longitude: 77.1025 },
+  { id: 'usr_5', name: 'Michael Brown', phone: '1112223335', role: 'caller', status: 'pending', createdAt: '2023-01-19T16:20:00Z', avatar: '/avatars/05.png', latitude: 28.5355, longitude: 77.3910 },
+  { id: 'usr_6', name: 'Jessica Green', phone: '1112223336', role: 'caller', status: 'pending', createdAt: '2023-01-20T10:15:00Z', avatar: 'https://placehold.co/32x32.png', latitude: 28.6139, longitude: 77.2090 },
 ];
 
 export const loginActivity: LoginActivity[] = [
