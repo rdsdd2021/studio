@@ -1,9 +1,10 @@
-import { getLeadDetails, getAssignmentHistory } from '@/actions/leads';
+import { getLeadDetails, getAssignmentHistory, getLeads, getAssignments } from '@/actions/leads';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AssignmentHistory } from '@/components/leads/assignment-history';
 import { UpdateDispositionForm } from '@/components/leads/update-disposition-form';
 import { User, Phone, School, MapPin, Milestone, Calendar } from 'lucide-react';
+import type { Assignment, Lead } from '@/lib/types';
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const lead = await getLeadDetails(params.id);
@@ -12,6 +13,27 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   }
 
   const history = await getAssignmentHistory(params.id);
+  
+  // To find the next lead, we need the full list of "My Leads"
+  const allLeads = await getLeads();
+  const allAssignments = await getAssignments();
+  const currentUserId = 'usr_3'; // Mocked user
+
+  const latestAssignments = new Map<string, Assignment>();
+  allAssignments.forEach(assignment => {
+    const existing = latestAssignments.get(assignment.mainDataRefId);
+    if (!existing || new Date(assignment.assignedTime) > new Date(existing.assignedTime)) {
+      latestAssignments.set(assignment.mainDataRefId, assignment);
+    }
+  });
+
+  const myLeadAssignments = Array.from(latestAssignments.values()).filter(
+    (a) => a.userId === currentUserId
+  );
+  
+  const myLeadIds = new Set(myLeadAssignments.map(a => a.mainDataRefId));
+  const myLeads = allLeads.filter(l => myLeadIds.has(l.refId));
+
 
   // Mocking the current user as a caller
   const currentUserRole = 'caller';
@@ -23,8 +45,8 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         <p className="text-muted-foreground">Lead ID: {lead.refId}</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Lead Information</CardTitle>
@@ -88,7 +110,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           </Card>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="md:col-span-1">
           {currentUserRole === 'caller' && (
             <Card>
               <CardHeader>
@@ -96,7 +118,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <CardDescription>Log the outcome of your call.</CardDescription>
               </CardHeader>
               <CardContent>
-                <UpdateDispositionForm leadId={lead.refId} history={history} />
+                <UpdateDispositionForm leadId={lead.refId} history={history} myLeads={myLeads} />
               </CardContent>
             </Card>
           )}

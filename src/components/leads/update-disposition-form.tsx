@@ -23,10 +23,12 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { addAssignment } from '@/actions/leads'
-import type { Disposition, SubDisposition, Assignment } from '@/lib/types'
+import type { Disposition, SubDisposition, Assignment, Lead } from '@/lib/types'
 import { Wand2, Zap, BrainCircuit } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Progress } from '../ui/progress'
+import { useRouter } from 'next/navigation'
+import { Checkbox } from '../ui/checkbox'
 
 const dispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 const subDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
@@ -37,6 +39,7 @@ const FormSchema = z.object({
   remark: z.string().min(10, {
     message: "Remark must be at least 10 characters.",
   }),
+  nextLead: z.boolean().default(true),
 })
 
 type SuggestionResponse = {
@@ -44,13 +47,24 @@ type SuggestionResponse = {
   confidenceScore: number;
 }
 
-export function UpdateDispositionForm({ leadId, history }: { leadId: string; history: Assignment[] }) {
+interface UpdateDispositionFormProps {
+  leadId: string;
+  history: Assignment[];
+  myLeads: Lead[];
+}
+
+export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispositionFormProps) {
   const { toast } = useToast()
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSuggesting, setIsSuggesting] = React.useState(false);
   const [suggestion, setSuggestion] = React.useState<SuggestionResponse | null>(null);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
+    defaultValues: {
+      nextLead: true,
+    }
   })
 
   const remarkValue = form.watch('remark');
@@ -97,21 +111,46 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
   }
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
+    setIsSubmitting(true);
     try {
-      // Mocking current user as 'usr_3' (John Smith)
       await addAssignment(leadId, 'usr_3', data.disposition, data.subDisposition, data.remark);
-      toast({
-        title: "Status Updated",
-        description: "The lead status has been successfully updated.",
-      })
-      form.reset({ remark: '' });
+      
+      form.reset({ remark: '', nextLead: data.nextLead });
       setSuggestion(null);
+
+      if (data.nextLead) {
+        const currentIndex = myLeads.findIndex(l => l.refId === leadId);
+        const nextLead = myLeads[currentIndex + 1];
+
+        if (nextLead) {
+          toast({
+            title: "Status Updated",
+            description: "Loading next lead...",
+          });
+          router.push(`/leads/${nextLead.refId}`);
+        } else {
+          toast({
+            title: "Status Updated",
+            description: "You've reached the end of your lead list!",
+          });
+          router.push('/my-leads');
+        }
+      } else {
+        toast({
+          title: "Status Updated",
+          description: "The lead status has been successfully updated.",
+        });
+        router.refresh();
+      }
+
     } catch (error) {
        toast({
         title: "Update Failed",
         description: "Could not update the lead status. Please try again.",
         variant: "destructive"
       })
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -126,7 +165,7 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
               <FormLabel>Disposition</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger disabled={isSubmitting}>
                     <SelectValue placeholder="Select a disposition" />
                   </SelectTrigger>
                 </FormControl>
@@ -149,6 +188,7 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
                   placeholder="Add your call notes here..."
                   className="resize-none"
                   {...field}
+                  disabled={isSubmitting}
                 />
               </FormControl>
               <FormMessage />
@@ -160,7 +200,7 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
             variant="outline"
             size="sm"
             onClick={handleSuggest}
-            disabled={isSuggesting || !remarkValue || remarkValue.length < 10}
+            disabled={isSuggesting || !remarkValue || remarkValue.length < 10 || isSubmitting}
             className="w-full"
         >
             <BrainCircuit className="mr-2 h-4 w-4" />
@@ -177,7 +217,7 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
               </Badge>
             </div>
             <p className="text-sm text-center font-medium p-2 bg-background rounded-md">{suggestion.suggestedSubDisposition}</p>
-            <Button type="button" size="sm" className="w-full h-8" onClick={useSuggestion}><Wand2 className="w-4 h-4 mr-2"/> Use this suggestion</Button>
+            <Button type="button" size="sm" className="w-full h-8" onClick={useSuggestion} disabled={isSubmitting}><Wand2 className="w-4 h-4 mr-2"/> Use this suggestion</Button>
           </div>
         )}
 
@@ -189,7 +229,7 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
               <FormLabel>Sub-Disposition</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger disabled={isSubmitting}>
                     <SelectValue placeholder="Select a sub-disposition" />
                   </SelectTrigger>
                 </FormControl>
@@ -201,7 +241,31 @@ export function UpdateDispositionForm({ leadId, history }: { leadId: string; his
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">Update Lead</Button>
+
+        <FormField
+          control={form.control}
+          name="nextLead"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  Go to next lead after update
+                </FormLabel>
+              </div>
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Updating...' : 'Update Lead'}
+        </Button>
       </form>
     </Form>
   )
