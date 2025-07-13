@@ -17,7 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { useForm } from 'react-hook-form'
+import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import {
@@ -40,20 +40,122 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { updateUser } from '@/actions/users'
 import type { Disposition, SubDisposition, User } from '@/lib/types'
-import { leads, users } from '@/lib/data'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Tag, Trash2, X } from 'lucide-react';
+import { getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings } from '@/actions/settings';
 
-const FormSchema = z.object({
+const ProfileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
 })
 
-const uniqueCampaigns = Array.from(new Set(leads.map(l => l.campaign).filter(Boolean)));
+const GeofenceFormSchema = z.object({
+    centerLocation: z.string().min(1, { message: "Center location cannot be empty." }),
+    radius: z.coerce.number().min(1, { message: "Radius must be at least 1." })
+})
+
+// MOCK DATA - In a real app this would come from the database
+const uniqueCampaigns: string[] = ['Summer Fest 2024', 'Diwali Dhamaka'];
 const globalDispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 const globalSubDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
+const mockUser: User = { id: 'usr_1', name: 'Admin User', phone: '1234567890', role: 'admin', status: 'active', createdAt: new Date().toISOString(), avatar: `https://placehold.co/32x32.png` };
+
+
+function GeofenceSettingsForm({ settings }: { settings: GeofenceSettings }) {
+    const { toast } = useToast();
+    const router = useRouter();
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    const form = useForm<z.infer<typeof GeofenceFormSchema>>({
+        resolver: zodResolver(GeofenceFormSchema),
+        defaultValues: {
+            centerLocation: settings.centerLocation || '',
+            radius: settings.radius || 5000,
+        },
+    });
+
+    async function onSubmit(data: z.infer<typeof GeofenceFormSchema>) {
+        setIsSubmitting(true);
+        try {
+            await saveGeofenceSettings(data);
+            toast({
+                title: 'Settings Saved!',
+                description: 'Your geofencing settings have been updated.',
+            });
+            router.refresh();
+        } catch (error) {
+            toast({
+                title: 'Save Failed',
+                description: 'Could not save geofencing settings. Please try again.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+                 <CardContent className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="centerLocation"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Center Location</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g., Connaught Place, New Delhi" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="radius"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Radius (in meters)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 5000" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <p className="text-sm text-muted-foreground pt-4">
+                            Other application-wide settings like notification preferences, API keys, and theme customization would appear here.
+                        </p>
+                    </div>
+                    <div className="relative rounded-lg overflow-hidden border bg-muted h-64 md:h-auto">
+                        <Image
+                            src="https://placehold.co/600x400.png"
+                            alt="Map placeholder"
+                            width={600}
+                            height={400}
+                            data-ai-hint="map"
+                            className="object-cover w-full h-full opacity-30"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center p-4">
+                            <div className="w-full h-full rounded-full bg-primary/20 border-2 border-dashed border-primary flex items-center justify-center">
+                                <span className="text-primary font-semibold text-sm bg-background/80 px-3 py-1 rounded-full">Operational Area</span>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="border-t pt-6">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Saving...' : 'Save Settings'}
+                    </Button>
+                </CardFooter>
+            </form>
+        </FormProvider>
+    )
+}
 
 
 export default function AccountPage() {
@@ -62,10 +164,21 @@ export default function AccountPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   // In a real app, you'd get the current user from session/auth context
-  const user = users.find(u => u.role === 'admin') as User;
+  // Also settings would be fetched from the backend.
+  const [geofenceSettings, setGeofenceSettings] = React.useState<GeofenceSettings | null>(null);
+
+  React.useEffect(() => {
+    async function fetchSettings() {
+      const settings = await getGeofenceSettings();
+      setGeofenceSettings(settings);
+    }
+    fetchSettings();
+  }, []);
+
+  const user = mockUser;
   
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
+  const form = useForm<z.infer<typeof ProfileFormSchema>>({
+    resolver: zodResolver(ProfileFormSchema),
     defaultValues: {
       name: user.name,
       phone: user.phone,
@@ -73,7 +186,7 @@ export default function AccountPage() {
     },
   })
 
-  async function onSubmit(data: z.infer<typeof FormSchema>) {
+  async function onSubmit(data: z.infer<typeof ProfileFormSchema>) {
     setIsSubmitting(true)
     try {
       await updateUser(user.id, data)
@@ -202,39 +315,13 @@ export default function AccountPage() {
                     Define the operational area for your team. Users logging in outside this area can be flagged or restricted.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                    <div>
-                        <Label htmlFor="center-location">Center Location</Label>
-                        <Input id="center-location" placeholder="e.g., Connaught Place, New Delhi" defaultValue="Connaught Place, New Delhi" />
-                    </div>
-                    <div>
-                        <Label htmlFor="radius">Radius (in meters)</Label>
-                        <Input id="radius" placeholder="e.g., 5000" defaultValue="5000" type="number" />
-                    </div>
-                     <p className="text-sm text-muted-foreground pt-4">
-                        Other application-wide settings like notification preferences, API keys, and theme customization would appear here.
-                    </p>
-                </div>
-                <div className="relative rounded-lg overflow-hidden border bg-muted h-64 md:h-auto">
-                    <Image
-                        src="https://placehold.co/600x400.png"
-                        alt="Map placeholder"
-                        width={600}
-                        height={400}
-                        data-ai-hint="map"
-                        className="object-cover w-full h-full opacity-30"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center p-4">
-                        <div className="w-full h-full rounded-full bg-primary/20 border-2 border-dashed border-primary flex items-center justify-center">
-                            <span className="text-primary font-semibold text-sm bg-background/80 px-3 py-1 rounded-full">Operational Area</span>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-            <CardFooter className="border-t pt-6">
-                <Button>Save Settings</Button>
-            </CardFooter>
+            {geofenceSettings ? (
+                <GeofenceSettingsForm settings={geofenceSettings} />
+            ) : (
+                <CardContent>
+                    <p>Loading settings...</p>
+                </CardContent>
+            )}
           </Card>
         </TabsContent>
         <TabsContent value="custom-fields">

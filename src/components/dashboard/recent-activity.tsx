@@ -1,10 +1,9 @@
 'use client';
 import * as React from 'react';
-import type { Assignment, User } from "@/lib/types";
+import type { Assignment } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
-import { users } from '@/lib/data';
 
 interface RecentActivityProps {
     assignments: Assignment[];
@@ -48,11 +47,11 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
     return (
         <div className="space-y-6">
             {recentAssignments.map((assignment) => {
-                const user = users.find(u => u.id === assignment.userId);
                 return (
                     <div key={assignment.id} className="flex items-start gap-4">
                         <Avatar className="h-9 w-9">
-                            <AvatarImage src={user?.avatar} alt={assignment.userName} />
+                            {/* In a real app, you might fetch the user's avatar separately if not included in the assignment data */}
+                            <AvatarImage src={`https://placehold.co/32x32.png`} alt={assignment.userName} />
                             <AvatarFallback>{getInitials(assignment.userName)}</AvatarFallback>
                         </Avatar>
                         <div className="grid gap-1 text-sm">
