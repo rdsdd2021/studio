@@ -19,10 +19,13 @@ export type LeadData = {
   refId: string
   name: string
   phone: string
+  gender: string
+  school: string
+  locality: string
+  district: string
   disposition: Disposition
   assignedTo?: string
   assignedTime?: string
-  school: string,
   customFields?: Record<string, any>
 }
 
@@ -77,6 +80,30 @@ export const columns: ColumnDef<LeadData>[] = [
   {
     accessorKey: 'school',
     header: 'School',
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+   {
+    accessorKey: 'locality',
+    header: 'Locality',
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+  {
+    accessorKey: 'district',
+    header: 'District',
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+  {
+    accessorKey: 'gender',
+    header: 'Gender',
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
   },
   {
     accessorKey: 'disposition',

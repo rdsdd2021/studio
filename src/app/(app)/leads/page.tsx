@@ -27,6 +27,16 @@ export default async function LeadsPage() {
   });
 
   const callers = users.filter(u => u.role === 'caller').map(u => ({ label: u.name, value: u.name }));
+
+  const getUniqueOptions = (fieldName: keyof Lead) => {
+    const values = new Set(allLeads.map(lead => lead[fieldName]));
+    return Array.from(values).map(value => ({ label: String(value), value: String(value) }));
+  }
+
+  const schoolOptions = getUniqueOptions('school');
+  const localityOptions = getUniqueOptions('locality');
+  const districtOptions = getUniqueOptions('district');
+  const genderOptions = getUniqueOptions('gender');
   
   return (
     <div className="container mx-auto py-2">
@@ -36,7 +46,15 @@ export default async function LeadsPage() {
           Filter, view, and assign leads to your team.
         </p>
       </div>
-      <DataTable columns={columns} data={data} callers={callers} />
+      <DataTable 
+        columns={columns} 
+        data={data} 
+        callers={callers}
+        schoolOptions={schoolOptions}
+        localityOptions={localityOptions}
+        districtOptions={districtOptions}
+        genderOptions={genderOptions}
+      />
     </div>
   )
 }

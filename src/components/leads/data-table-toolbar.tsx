@@ -21,15 +21,27 @@ const dispositions: {label: Disposition, value: Disposition}[] = [
   { label: 'Not Reachable', value: 'Not Reachable' },
 ];
 
+interface Option {
+  label: string;
+  value: string;
+}
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
-  callers?: {label: string, value: string}[];
+  callers?: Option[];
+  schoolOptions: Option[];
+  localityOptions: Option[];
+  districtOptions: Option[];
+  genderOptions: Option[];
 }
 
 export function DataTableToolbar<TData>({
   table,
-  callers
+  callers,
+  schoolOptions,
+  localityOptions,
+  districtOptions,
+  genderOptions,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0 || !!table.getState().globalFilter;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -41,7 +53,7 @@ export function DataTableToolbar<TData>({
   return (
     <>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-1 items-center space-x-2">
+        <div className="flex flex-1 items-center space-x-2 flex-wrap gap-y-2">
           <Input
             placeholder="Filter by name, phone, or custom fields..."
             value={(table.getState().globalFilter as string) ?? ''}
@@ -62,6 +74,34 @@ export function DataTableToolbar<TData>({
               column={table.getColumn("assignedTo")}
               title="Caller"
               options={callers}
+            />
+          )}
+          {table.getColumn("school") && (
+            <DataTableFacetedFilter
+              column={table.getColumn("school")}
+              title="School"
+              options={schoolOptions}
+            />
+          )}
+          {table.getColumn("locality") && (
+            <DataTableFacetedFilter
+              column={table.getColumn("locality")}
+              title="Locality"
+              options={localityOptions}
+            />
+          )}
+          {table.getColumn("district") && (
+            <DataTableFacetedFilter
+              column={table.getColumn("district")}
+              title="District"
+              options={districtOptions}
+            />
+          )}
+          {table.getColumn("gender") && (
+            <DataTableFacetedFilter
+              column={table.getColumn("gender")}
+              title="Gender"
+              options={genderOptions}
             />
           )}
           {isFiltered && (

@@ -14,6 +14,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  getFacetedMinMaxValues,
 } from '@tanstack/react-table'
 
 import {
@@ -27,16 +28,28 @@ import {
 import { Button } from '@/components/ui/button'
 import { DataTableToolbar } from './data-table-toolbar'
 
+interface Option {
+  label: string;
+  value: string;
+}
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  callers?: { label: string; value: string }[]
+  callers?: Option[];
+  schoolOptions: Option[];
+  localityOptions: Option[];
+  districtOptions: Option[];
+  genderOptions: Option[];
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   callers,
+  schoolOptions,
+  localityOptions,
+  districtOptions,
+  genderOptions,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -46,6 +59,10 @@ export function DataTable<TData, TValue>({
     React.useState<VisibilityState>({
         disposition: true,
         assignedTo: true,
+        school: true,
+        locality: true,
+        district: true,
+        gender: true,
     })
 
   const table = useReactTable({
@@ -62,6 +79,7 @@ export function DataTable<TData, TValue>({
     onGlobalFilterChange: setGlobalFilter,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getFacetedMinMaxValues: getFacetedMinMaxValues(),
     state: {
       sorting,
       columnFilters,
@@ -73,7 +91,14 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} callers={callers} />
+      <DataTableToolbar 
+        table={table} 
+        callers={callers}
+        schoolOptions={schoolOptions}
+        localityOptions={localityOptions}
+        districtOptions={districtOptions}
+        genderOptions={genderOptions}
+      />
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
