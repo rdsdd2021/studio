@@ -39,11 +39,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { updateUser } from '@/actions/users'
-import type { User } from '@/lib/types'
+import type { Disposition, SubDisposition, User } from '@/lib/types'
 import { leads, users } from '@/lib/data'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Tag, X } from 'lucide-react';
+import { PlusCircle, Tag, Trash2, X } from 'lucide-react';
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -52,6 +52,9 @@ const FormSchema = z.object({
 })
 
 const uniqueCampaigns = Array.from(new Set(leads.map(l => l.campaign).filter(Boolean)));
+const globalDispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
+const globalSubDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
+
 
 export default function AccountPage() {
   const router = useRouter()
@@ -90,13 +93,24 @@ export default function AccountPage() {
     }
   }
 
-  // Mock state for custom fields UI - in a real app this would come from a DB
+  // Mock state for custom fields/dispositions UI - in a real app this would come from a DB
   const [universalFields, setUniversalFields] = React.useState(['Source', 'Previous Course']);
   const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({
     'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
     'Diwali Dhamaka': ["Reference ID"],
   });
-  const [selectedCampaign, setSelectedCampaign] = React.useState(uniqueCampaigns[0] || '');
+  const [selectedCustomFieldCampaign, setSelectedCustomFieldCampaign] = React.useState(uniqueCampaigns[0] || '');
+
+  const [campaignDispositions, setCampaignDispositions] = React.useState<Record<string, Disposition[]>>({
+     'Summer Fest 2024': ['Interested', 'Follow-up', 'Callback', 'Application Started'],
+     'Diwali Dhamaka': ['Interested', 'Not Interested', 'Callback', 'Wrong Number'],
+  });
+   const [campaignSubDispositions, setCampaignSubDispositions] = React.useState<Record<string, SubDisposition[]>>({
+     'Summer Fest 2024': ['Paid', 'Trial Class Booked', 'Sent Brochure'],
+     'Diwali Dhamaka': ['Call Back Tomorrow', 'Price Issue'],
+  });
+  const [selectedDispositionCampaign, setSelectedDispositionCampaign] = React.useState(uniqueCampaigns[0] || '');
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -106,10 +120,11 @@ export default function AccountPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
+          <TabsTrigger value="dispositions">Dispositions</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <Card>
@@ -253,9 +268,9 @@ export default function AccountPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="max-w-xs">
-                    <Label htmlFor="campaign-select">Select a Campaign</Label>
-                     <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-                        <SelectTrigger id="campaign-select">
+                    <Label htmlFor="campaign-select-custom-fields">Select a Campaign</Label>
+                     <Select value={selectedCustomFieldCampaign} onValueChange={setSelectedCustomFieldCampaign}>
+                        <SelectTrigger id="campaign-select-custom-fields">
                             <SelectValue placeholder="Select a campaign..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -264,11 +279,11 @@ export default function AccountPage() {
                     </Select>
                 </div>
 
-                {selectedCampaign && (
+                {selectedCustomFieldCampaign && (
                     <div className="border-t pt-4 mt-4">
-                         <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" /> Fields for "{selectedCampaign}"</h4>
+                         <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" /> Fields for "{selectedCustomFieldCampaign}"</h4>
                          <div className="flex flex-wrap gap-2">
-                            {(campaignFields[selectedCampaign] || []).map(field => (
+                            {(campaignFields[selectedCustomFieldCampaign] || []).map(field => (
                                 <Badge key={field} variant="outline" className="text-base py-1 pl-3 pr-2">
                                     {field}
                                     <Button variant="ghost" size="icon" className="h-5 w-5 ml-1"><X className="h-3 w-3" /></Button>
@@ -281,6 +296,61 @@ export default function AccountPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+         <TabsContent value="dispositions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign-Specific Dispositions</CardTitle>
+              <CardDescription>
+                Customize dispositions and sub-dispositions for each campaign. If a campaign is not configured, it will use the global defaults.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+               <div className="max-w-xs">
+                    <Label htmlFor="campaign-select-dispositions">Select a Campaign</Label>
+                     <Select value={selectedDispositionCampaign} onValueChange={setSelectedDispositionCampaign}>
+                        <SelectTrigger id="campaign-select-dispositions">
+                            <SelectValue placeholder="Select a campaign..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {uniqueCampaigns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {selectedDispositionCampaign && (
+                  <div className="grid md:grid-cols-2 gap-6 border-t pt-6">
+                    {/* Dispositions Card */}
+                    <div className="space-y-4 rounded-lg border p-4">
+                      <h4 className="font-semibold">Dispositions for "{selectedDispositionCampaign}"</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {(campaignDispositions[selectedDispositionCampaign] || globalDispositions).map(d => (
+                           <Badge key={d} variant="secondary" className="text-base py-1 pl-3 pr-2">
+                              {d}
+                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20"><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                            </Badge>
+                        ))}
+                      </div>
+                      <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Disposition</Button>
+                    </div>
+
+                    {/* Sub-Dispositions Card */}
+                     <div className="space-y-4 rounded-lg border p-4">
+                      <h4 className="font-semibold">Sub-Dispositions for "{selectedDispositionCampaign}"</h4>
+                       <div className="flex flex-wrap gap-2">
+                        {(campaignSubDispositions[selectedDispositionCampaign] || globalSubDispositions).map(d => (
+                           <Badge key={d} variant="outline" className="text-base py-1 pl-3 pr-2">
+                              {d}
+                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20"><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                            </Badge>
+                        ))}
+                      </div>
+                       <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Sub-Disposition</Button>
+                    </div>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
