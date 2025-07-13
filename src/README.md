@@ -36,7 +36,7 @@ The application is designed around two primary user roles: **Admin** and **Calle
 | **Lead Detail** | `/leads/[id]` | ✅ | ✅ | View detailed information and history for a single lead. Callers can add info to empty custom fields. |
 | **User Management** | `/users` | ✅ | ❌ | Add, edit, approve, and deactivate users. |
 | **Login Tracker** | `/tracker` | ✅ | ❌ | View a log of user login/logout activity. |
-| **Account/Settings**| `/account` | ✅ | ✅ | Manage personal profile and application-wide settings (e.g., custom fields, geofencing). |
+| **Account/Settings**| `/account` | ✅ | ✅ | Manage personal profile and application-wide settings (e.g., custom fields, dispositions, geofencing). |
 
 ### User Flow
 
@@ -52,7 +52,7 @@ The application is designed around two primary user roles: **Admin** and **Calle
     -   On the detail page, they can see all lead details. In the "Additional Information" section, they can fill in any custom fields that are currently empty.
     -   Once a field is updated, it becomes read-only, displaying the value, the name of the caller who updated it, and the date of the update.
     -   The caller can then use the "Update Status" form to log the call's outcome. The AI Suggestion feature can help them choose the best sub-disposition.
-6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like custom fields for campaigns and geofencing. The geofencing settings allow an admin to define a specific operational area for their team.
+6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like custom fields, dispositions, and geofencing.
 
 ---
 
@@ -114,16 +114,18 @@ To transition this prototype into a production application, you need to replace 
 
 ### Step 3: Database Schema (Firestore Collections)
 
-To replace the mock data, you will need to create the following collections in your Firestore database:
+To replace the mock data, you will need to create the following collections in your Firestore database. This schema is designed to be flexible and scalable.
 
-| Collection | Description | Maps to Mock Data |
-| :--- | :--- | :--- |
-| **`users`** | Stores user profiles, roles, and status. Each document is a user. | `users` array |
-| **`leads`** | The primary collection for all lead information. Each document is a lead. | `leads` array |
-| **`assignmentHistory`** | A log of all activities for a lead, including assignments and dispositions. Each document is an event. | `assignmentHistory` array |
-| **`loginActivity`** | Records user login and logout events for tracking and security. | `loginActivity` array |
-| **`settings`** | Can be a single document or a small collection to hold application-wide configurations like custom fields and geofence settings. | `universalCustomFields`, `campaignCustomFields`, `geofenceSettings` |
-
+| Collection | Document ID | Fields | Description | Maps to Mock Data |
+| :--- | :--- | :--- | :--- | :--- |
+| **`users`** | Auto-generated | `name`, `phone`, `role`, `status`, `createdAt`, `avatar` | Stores user profiles, roles, and status. | `users` array |
+| **`leads`** | Auto-generated | `name`, `phone`, `gender`, `school`, `locality`, `district`, `createdAt`, `campaignIds`, `customFields` | The primary collection for all lead information. `campaignIds` is an array of strings. `customFields` is a map. | `leads` array |
+| **`assignmentHistory`** | Auto-generated | `leadId`, `userId`, `userName`, `assignedTime`, `disposition`, `subDisposition`, `remark`, `followUpDate`, `scheduleDate` | A log of all activities for a lead. Contains references to `leads` and `users`. | `assignmentHistory` array |
+| **`loginActivity`** | Auto-generated | `userId`, `userName`, `timestamp`, `activity`, `ipAddress`, `device` | Records user login and logout events for tracking. | `loginActivity` array |
+| **`campaigns`** | Auto-generated | `name`, `createdAt` | Stores a list of all available marketing campaigns. This allows for easier management than hardcoding them. | `Object.keys(campaignCustomFields)` |
+| **`customFields`** | Auto-generated | `name`, `type` (`universal` or `campaign`), `campaignId` (if applicable) | Defines all custom fields available in the system. | `universalCustomFields`, `campaignCustomFields` |
+| **`dispositions`** | Auto-generated | `name`, `type` (`disposition` or `sub-disposition`), `campaignId` (if applicable) | Defines the available disposition and sub-disposition options, allowing for both global and campaign-specific choices. | Hardcoded dispositions in the UI. |
+| **`settings`** | `global` (single doc) | `geofenceSettings` | A single document to hold application-wide configurations like geofencing. | `geofenceSettings` |
 
 ### Step 4: Rewrite Server Actions
 
@@ -132,7 +134,7 @@ This is the most critical step. You need to replace the functions that manipulat
 **Location of Actions**: `src/actions/*.ts`
 
 **General Process**:
-For each function in `src/actions/leads.ts`, `src/actions/users.ts`, etc., you will:
+For each function in `src/actions/leads.ts`, `src/actions/users.ts`, and `src/actions/settings.ts`, you will:
 1.  Import a `db` instance from a Firebase initialization file (see next step).
 2.  Replace the array manipulation logic (e.g., `leads.find(...)`, `users.push(...)`) with Firestore SDK calls (e.g., `db.collection('leads').doc(id).get()`, `db.collection('users').add(...)`).
 
@@ -165,7 +167,7 @@ You will need to repeat this process for **all functions** in the `src/actions/`
 
 ### Step 5: Connect the App to Firebase
 
-This app uses a single file to manage the Firebase Admin SDK connection. You just need to uncomment the Firebase-related code.
+This app uses a single file to manage the Firebase Admin SDK connection.
 
 -   **File to create**: `src/lib/firebase.ts`
 
@@ -220,9 +222,8 @@ A platform like **Vercel** or **Firebase Hosting** is recommended for deploying 
 3.  **Configure Environment Variables**: In your hosting provider's project settings (e.g., Vercel's "Environment Variables" section), add all the variables from your `.env.local` file:
     -   `FIREBASE_PROJECT_ID`
     -   `FIREBASE_CLIENT_EMAIL`
-    -   `FIREBEASE_PRIVATE_KEY`
+    -   `FIREBASE_PRIVATE_KEY`
     -   `GOOGLE_API_KEY`
 4.  **Deploy**: Push your code to the `main` branch. The hosting provider will automatically build and deploy your application.
 
 After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready infrastructure.
-
