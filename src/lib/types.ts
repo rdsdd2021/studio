@@ -6,6 +6,7 @@ export interface User {
   status: 'pending' | 'active' | 'inactive';
   createdAt: string;
   avatar: string;
+  loginStatus?: 'online' | 'offline';
 }
 
 export interface Lead {

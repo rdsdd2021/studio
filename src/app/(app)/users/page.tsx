@@ -1,9 +1,25 @@
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from './columns';
-import { users } from '@/lib/data';
+import { loginActivity, users } from '@/lib/data';
+import type { LoginActivity } from '@/lib/types';
 
 export default async function UsersPage() {
-  const data = users;
+  const latestActivityMap = new Map<string, LoginActivity>();
+
+  // Sort activities by timestamp to find the latest one for each user
+  loginActivity
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .forEach(activity => {
+        if (!latestActivityMap.has(activity.userId)) {
+            latestActivityMap.set(activity.userId, activity);
+        }
+    });
+
+  const data = users.map(user => {
+    const latestActivity = latestActivityMap.get(user.id);
+    const loginStatus = latestActivity?.activity === 'login' ? 'online' : 'offline';
+    return { ...user, loginStatus };
+  });
 
   return (
     <div className="container mx-auto py-2">

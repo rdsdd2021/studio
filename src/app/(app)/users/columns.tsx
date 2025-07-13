@@ -145,12 +145,22 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
         const user = row.original;
         const nameFallback = user.name.split(' ').map(n => n[0]).join('');
+        const isOnline = user.loginStatus === 'online';
         return (
             <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{nameFallback}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarFallback>{nameFallback}</AvatarFallback>
+                    </Avatar>
+                    <span
+                        className={cn(
+                            'absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-card',
+                            isOnline ? 'bg-green-500' : 'bg-gray-400'
+                        )}
+                        title={isOnline ? 'Online' : 'Offline'}
+                    />
+                </div>
                 <div className="flex flex-col">
                   <span className="font-medium">{user.name}</span>
                   <span className="text-xs text-muted-foreground">{user.phone}</span>
