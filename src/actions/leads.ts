@@ -119,3 +119,28 @@ export async function updateCampaignForLeads(leadIds: string[], campaign: string
     });
     return { count: updatedCount };
 }
+
+export async function updateLeadCustomField(leadId: string, fieldName: string, value: string, userId: string): Promise<Lead> {
+    const leadIndex = leads.findIndex(l => l.refId === leadId);
+    if (leadIndex === -1) {
+        throw new Error("Lead not found");
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+        throw new Error("User not found");
+    }
+
+    const lead = leads[leadIndex];
+    if (!lead.customFields) {
+        lead.customFields = {};
+    }
+
+    lead.customFields[fieldName] = {
+        value,
+        updatedBy: user.name,
+        updatedAt: new Date().toISOString()
+    };
+    
+    return JSON.parse(JSON.stringify(lead));
+}

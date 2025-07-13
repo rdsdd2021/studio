@@ -1,5 +1,7 @@
 'use server'
 
+import { campaignCustomFields, universalCustomFields } from "@/lib/data";
+
 export interface GeofenceSettings {
     centerLocation: string;
     radius: number;
@@ -22,4 +24,13 @@ export async function saveGeofenceSettings(settings: GeofenceSettings): Promise<
     await new Promise(resolve => setTimeout(resolve, 500));
     geofenceSettings = settings;
     console.log("Saved geofence settings:", geofenceSettings);
+}
+
+// In a real app, these functions would read from/write to a database
+export async function getUniversalCustomFields(): Promise<string[]> {
+    return universalCustomFields;
+}
+
+export async function getCampaignCustomFields(): Promise<Record<string, string[]>> {
+    return campaignCustomFields;
 }

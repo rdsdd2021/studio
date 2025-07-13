@@ -26,6 +26,8 @@ import { importLeads } from '@/actions/leads'
 import type { Lead } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Lightbulb, FileQuestion, Map } from 'lucide-react'
+import { campaignCustomFields, universalCustomFields } from '@/lib/data'
+
 
 interface ImportLeadsDialogProps {
   isOpen: boolean
@@ -34,11 +36,8 @@ interface ImportLeadsDialogProps {
 
 const requiredFields = ['name', 'phone'];
 // MOCK: In real app, this would be fetched
-const uniqueCampaigns: string[] = ['Summer Fest 2024', 'Diwali Dhamaka'];
-const campaignFields: Record<string, string[]> = {
-    'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
-    'Diwali Dhamaka': ["Reference ID"],
-};
+const uniqueCampaigns: string[] = Object.keys(campaignCustomFields);
+
 
 export function ImportLeadsDialog({
   isOpen,
@@ -126,15 +125,25 @@ export function ImportLeadsDialog({
                 district: row.district,
             };
 
-            const customFields: Record<string, any> = {};
-            if(selectedCampaign && campaignFields[selectedCampaign]) {
-                campaignFields[selectedCampaign].forEach(field => {
-                    const mappedHeader = fieldMapping[field];
-                    if(mappedHeader && row[mappedHeader]) {
-                        customFields[field] = row[mappedHeader];
-                    }
-                })
+            const customFields: Lead['customFields'] = {};
+            
+            const processField = (fieldName: string) => {
+                const mappedHeader = fieldMapping[fieldName];
+                if (mappedHeader && row[mappedHeader]) {
+                    customFields[fieldName] = {
+                        value: row[mappedHeader],
+                        updatedBy: 'Import',
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            };
+            
+            universalCustomFields.forEach(processField);
+            
+            if (selectedCampaign && campaignCustomFields[selectedCampaign]) {
+                campaignCustomFields[selectedCampaign].forEach(processField);
             }
+            
             leadData.customFields = customFields;
             return leadData;
         });
@@ -163,6 +172,9 @@ export function ImportLeadsDialog({
       }
     });
   };
+  
+  const currentCampaignFields = selectedCampaign ? campaignCustomFields[selectedCampaign] || [] : [];
+  const allMappableFields = [...universalCustomFields, ...currentCampaignFields];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
@@ -205,13 +217,13 @@ export function ImportLeadsDialog({
                             {uniqueCampaigns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">Selecting a campaign allows you to map campaign-specific fields.</p>
+                    <p className="text-xs text-muted-foreground">Selecting a campaign adds its specific fields for mapping.</p>
                 </div>
 
-                {selectedCampaign && campaignFields[selectedCampaign] && (
+                {allMappableFields.length > 0 && (
                     <div className="space-y-4 rounded-md border p-4">
-                        <h4 className="font-semibold flex items-center gap-2"><Map className="h-4 w-4" /> Map Campaign Fields for "{selectedCampaign}"</h4>
-                        {campaignFields[selectedCampaign].map(field => (
+                        <h4 className="font-semibold flex items-center gap-2"><Map className="h-4 w-4" /> Map Additional Fields</h4>
+                        {allMappableFields.map(field => (
                             <div key={field} className="grid grid-cols-2 items-center gap-4">
                                 <Label htmlFor={`map-${field}`}>{field}</Label>
                                 <Select onValueChange={(value) => handleMappingChange(field, value)} disabled={isSubmitting}>

@@ -10,6 +10,12 @@ export interface User {
   password?: string;
 }
 
+export interface CustomFieldValue {
+  value: string;
+  updatedBy?: string; // User's name
+  updatedAt?: string; // ISO date string
+}
+
 export interface Lead {
   refId: string;
   name: string;
@@ -20,7 +26,7 @@ export interface Lead {
   district: string;
   createdAt: string;
   campaign?: string;
-  customFields?: Record<string, any>;
+  customFields?: Record<string, CustomFieldValue>;
 }
 
 export type Disposition = 'New' | 'Interested' | 'Not Interested' | 'Follow-up' | 'Callback' | 'Not Reachable';

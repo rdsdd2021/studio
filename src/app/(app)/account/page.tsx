@@ -43,7 +43,7 @@ import type { Disposition, SubDisposition, User } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Tag, Trash2, X } from 'lucide-react';
-import { getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings } from '@/actions/settings';
+import { getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings, getCampaignCustomFields, getUniversalCustomFields } from '@/actions/settings';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ProfileFormSchema = z.object({
@@ -58,9 +58,6 @@ const GeofenceFormSchema = z.object({
 })
 
 // MOCK DATA - In a real app this would come from a database or a global context
-const uniqueCampaigns: string[] = ['Summer Fest 2024', 'Diwali Dhamaka'];
-const globalDispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
-const globalSubDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
 const mockUser: User = { id: 'usr_1', name: 'Admin User', phone: '1234567890', role: 'admin', status: 'active', createdAt: new Date().toISOString(), avatar: `https://placehold.co/32x32.png` };
 
 
@@ -167,11 +164,30 @@ export default function AccountPage() {
   // In a real app, you'd get the current user from session/auth context
   // Also settings would be fetched from the backend.
   const [geofenceSettings, setGeofenceSettings] = React.useState<GeofenceSettings | null>(null);
+  const [universalFields, setUniversalFields] = React.useState<string[]>([]);
+  const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({});
+  
+  const uniqueCampaigns = Object.keys(campaignFields);
+  
+  // MOCK DATA - In a real app this would come from a database or a global context
+  const globalDispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
+  const globalSubDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
+
 
   React.useEffect(() => {
     async function fetchSettings() {
-      const settings = await getGeofenceSettings();
-      setGeofenceSettings(settings);
+      const [gSettings, uFields, cFields] = await Promise.all([
+        getGeofenceSettings(),
+        getUniversalCustomFields(),
+        getCampaignCustomFields()
+      ]);
+      setGeofenceSettings(gSettings);
+      setUniversalFields(uFields);
+      setCampaignFields(cFields);
+      if (Object.keys(cFields).length > 0) {
+        setSelectedCustomFieldCampaign(Object.keys(cFields)[0]);
+        setSelectedDispositionCampaign(Object.keys(cFields)[0]);
+      }
     }
     fetchSettings();
   }, []);
@@ -208,12 +224,7 @@ export default function AccountPage() {
   }
 
   // Mock state for custom fields/dispositions UI - in a real app this would come from a DB
-  const [universalFields, setUniversalFields] = React.useState(['Source', 'Previous Course']);
-  const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({
-    'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
-    'Diwali Dhamaka': ["Reference ID"],
-  });
-  const [selectedCustomFieldCampaign, setSelectedCustomFieldCampaign] = React.useState(uniqueCampaigns[0] || '');
+  const [selectedCustomFieldCampaign, setSelectedCustomFieldCampaign] = React.useState('');
 
   const [campaignDispositions, setCampaignDispositions] = React.useState<Record<string, Disposition[]>>({
      'Summer Fest 2024': ['Interested', 'Follow-up', 'Callback', 'Application Started'],
@@ -223,7 +234,7 @@ export default function AccountPage() {
      'Summer Fest 2024': ['Paid', 'Trial Class Booked', 'Sent Brochure'],
      'Diwali Dhamaka': ['Call Back Tomorrow', 'Price Issue'],
   });
-  const [selectedDispositionCampaign, setSelectedDispositionCampaign] = React.useState(uniqueCampaigns[0] || '');
+  const [selectedDispositionCampaign, setSelectedDispositionCampaign] = React.useState('');
 
 
   return (

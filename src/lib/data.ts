@@ -12,9 +12,9 @@ export const users: User[] = [
 ];
 
 export const leads: Lead[] = [
-    { refId: 'lead_001', name: 'Aarav Sharma', phone: '9876543210', gender: 'Male', school: 'Delhi Public School', locality: 'RK Puram', district: 'New Delhi', createdAt: new Date('2024-05-01T09:00:00Z').toISOString(), campaign: 'Summer Fest 2024', customFields: { "Parent's Name": 'Sunita Sharma' } },
+    { refId: 'lead_001', name: 'Aarav Sharma', phone: '9876543210', gender: 'Male', school: 'Delhi Public School', locality: 'RK Puram', district: 'New Delhi', createdAt: new Date('2024-05-01T09:00:00Z').toISOString(), campaign: 'Summer Fest 2024', customFields: { "Parent's Name": { value: 'Sunita Sharma', updatedBy: 'Import', updatedAt: new Date('2024-05-01T09:00:00Z').toISOString() } } },
     { refId: 'lead_002', name: 'Priya Patel', phone: '9876543211', gender: 'Female', school: 'Modern School', locality: 'Vasant Vihar', district: 'New Delhi', createdAt: new Date('2024-05-01T10:30:00Z').toISOString() },
-    { refId: 'lead_003', name: 'Rohan Gupta', phone: '9876543212', gender: 'Male', school: 'Amity International', locality: 'Saket', district: 'South Delhi', createdAt: new Date('2024-05-02T11:00:00Z').toISOString(), campaign: 'Diwali Dhamaka' },
+    { refId: 'lead_003', name: 'Rohan Gupta', phone: '9876543212', gender: 'Male', school: 'Amity International', locality: 'Saket', district: 'South Delhi', createdAt: new Date('2024-05-02T11:00:00Z').toISOString(), campaign: 'Diwali Dhamaka', customFields: {} },
     { refId: 'lead_004', name: 'Sneha Reddy', phone: '9876543213', gender: 'Female', school: 'Delhi Public School', locality: 'Noida Sector 15', district: 'Gautam Budh Nagar', createdAt: new Date('2024-05-02T14:15:00Z').toISOString(), campaign: 'Summer Fest 2024' },
     { refId: 'lead_005', name: 'Vikram Singh', phone: '9876543214', gender: 'Male', school: 'The Shri Ram School', locality: 'DLF Phase 3', district: 'Gurugram', createdAt: new Date('2024-05-03T16:00:00Z').toISOString() },
     { refId: 'lead_006', name: 'Ananya Iyer', phone: '9876543215', gender: 'Female', school: 'Venkateshwar Global School', locality: 'Rohini', district: 'North West Delhi', createdAt: new Date('2024-05-04T09:30:00Z').toISOString(), campaign: 'Diwali Dhamaka' },
@@ -39,3 +39,9 @@ export const loginActivity: LoginActivity[] = [
     { id: 'act_3', userId: 'usr_3', userName: 'John Smith', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), activity: 'login', ipAddress: '198.51.100.10', device: 'Chrome on Windows' },
     { id: 'act_4', userId: 'usr_2', userName: 'Jane Doe', timestamp: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(), activity: 'logout', ipAddress: '203.0.113.25', device: 'Safari on iPhone' },
 ];
+
+export const universalCustomFields = ['Source', 'Previous Course'];
+export const campaignCustomFields: Record<string, string[]> = {
+    'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
+    'Diwali Dhamaka': ["Reference ID"],
+};
