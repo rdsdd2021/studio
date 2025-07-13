@@ -1,10 +1,19 @@
-import type { User, Lead, Assignment, Disposition, SubDisposition } from './types';
+import type { User, Lead, Assignment, Disposition, SubDisposition, LoginActivity } from './types';
 
 export const users: User[] = [
-  { id: 'usr_1', name: 'Admin User', phone: '1112223331', role: 'admin', active: true, createdAt: '2023-01-15T09:30:00Z', avatar: '/avatars/01.png' },
-  { id: 'usr_2', name: 'Jane Doe', phone: '1112223332', role: 'caller', active: true, createdAt: '2023-01-16T10:00:00Z', avatar: '/avatars/02.png' },
-  { id: 'usr_3', name: 'John Smith', phone: '1112223333', role: 'caller', active: true, createdAt: '2023-01-17T11:45:00Z', avatar: '/avatars/03.png' },
-  { id: 'usr_4', name: 'Emily White', phone: '1112223334', role: 'caller', active: false, createdAt: '2023-01-18T14:00:00Z', avatar: '/avatars/04.png' },
+  { id: 'usr_1', name: 'Admin User', phone: '1112223331', role: 'admin', status: 'active', createdAt: '2023-01-15T09:30:00Z', avatar: '/avatars/01.png' },
+  { id: 'usr_2', name: 'Jane Doe', phone: '1112223332', role: 'caller', status: 'active', createdAt: '2023-01-16T10:00:00Z', avatar: '/avatars/02.png' },
+  { id: 'usr_3', name: 'John Smith', phone: '1112223333', role: 'caller', status: 'active', createdAt: '2023-01-17T11:45:00Z', avatar: '/avatars/03.png' },
+  { id: 'usr_4', name: 'Emily White', phone: '1112223334', role: 'caller', status: 'inactive', createdAt: '2023-01-18T14:00:00Z', avatar: '/avatars/04.png' },
+  { id: 'usr_5', name: 'Michael Brown', phone: '1112223335', role: 'caller', status: 'pending', createdAt: '2023-01-19T16:20:00Z', avatar: '/avatars/05.png' },
+  { id: 'usr_6', name: 'Jessica Green', phone: '1112223336', role: 'caller', status: 'pending', createdAt: '2023-01-20T10:15:00Z', avatar: 'https://placehold.co/32x32.png' },
+];
+
+export const loginActivity: LoginActivity[] = [
+    { id: 'act_1', userId: 'usr_1', userName: 'Admin User', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), activity: 'login', ipAddress: '192.168.1.1', device: 'Chrome on macOS' },
+    { id: 'act_2', userId: 'usr_2', userName: 'Jane Doe', timestamp: new Date(Date.now() - 1.5 * 60 * 60 * 1000).toISOString(), activity: 'login', ipAddress: '203.0.113.25', device: 'Safari on iPhone' },
+    { id: 'act_3', userId: 'usr_3', userName: 'John Smith', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), activity: 'login', ipAddress: '198.51.100.10', device: 'Chrome on Windows' },
+    { id: 'act_4', userId: 'usr_2', userName: 'Jane Doe', timestamp: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(), activity: 'logout', ipAddress: '203.0.113.25', device: 'Safari on iPhone' },
 ];
 
 export const leads: Lead[] = Array.from({ length: 50 }, (_, i) => ({

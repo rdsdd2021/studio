@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -7,15 +8,41 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LeadsFlowLogo } from '@/components/icons'
 import { useRouter } from 'next/navigation'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { users } from '@/lib/data'
 
 export default function LoginPage() {
   const router = useRouter();
+  const [email, setEmail] = React.useState('admin@leadsflow.com');
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd handle authentication here.
-    // For this demo, we'll just redirect to the dashboard.
-    router.push('/dashboard');
+    setError(null);
+
+    // This is a mock authentication check.
+    // In a real app, you would make an API call to your backend.
+    const user = users.find(u => u.name.toLowerCase().replace(' ', '') + '@leadsflow.com' === email);
+
+    if (!user) {
+        setError("Invalid email or password.");
+        return;
+    }
+
+    switch(user.status) {
+        case 'pending':
+            setError("Your account is awaiting admin approval. Please check back later.");
+            break;
+        case 'inactive':
+            setError("Your account has been deactivated. Please contact an administrator.");
+            break;
+        case 'active':
+            // In a real app, you'd also record the login event here.
+            router.push('/dashboard');
+            break;
+        default:
+            setError("An unknown error occurred. Please try again.");
+    }
   };
 
   return (
@@ -39,7 +66,8 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 required
-                defaultValue="admin@leadsflow.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -51,6 +79,11 @@ export default function LoginPage() {
               </div>
               <Input id="password" type="password" required defaultValue="password123" />
             </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
               Login
             </Button>

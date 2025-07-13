@@ -12,12 +12,12 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, CheckCircle, XCircle, Hourglass } from 'lucide-react'
 import type { User } from '@/lib/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { EditUserDialog } from '@/components/users/edit-user-dialog'
-import { toggleUserStatus } from '@/actions/users'
+import { toggleUserStatus, approveUser } from '@/actions/users'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
@@ -27,18 +27,35 @@ const UserActions = ({ user }: { user: User }) => {
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleToggleStatus = async () => {
+  const handleToggle = async () => {
     try {
-      await toggleUserStatus(user.id, user.active);
+      await toggleUserStatus(user.id);
       toast({
-        title: `User ${user.active ? 'Deactivated' : 'Activated'}`,
-        description: `${user.name} has been successfully ${user.active ? 'deactivated' : 'activated'}.`,
+        title: `User ${user.status === 'active' ? 'Deactivated' : 'Activated'}`,
+        description: `${user.name} has been successfully ${user.status === 'active' ? 'deactivated' : 'activated'}.`,
       });
       router.refresh();
     } catch (error) {
       toast({
         title: 'Update Failed',
         description: 'Could not update user status. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await approveUser(user.id);
+       toast({
+        title: "User Approved",
+        description: `${user.name} has been approved and is now active.`,
+      });
+      router.refresh();
+    } catch (error) {
+       toast({
+        title: 'Approval Failed',
+        description: 'Could not approve user. Please try again.',
         variant: 'destructive',
       });
     }
@@ -59,15 +76,21 @@ const UserActions = ({ user }: { user: User }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {user.status === 'pending' && (
+            <DropdownMenuItem onClick={handleApprove}>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Approve User
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
             Edit User
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
-            onClick={handleToggleStatus}
-            className={cn(user.active ? "text-destructive focus:text-destructive" : "text-green-600 focus:text-green-600")}
+            onClick={handleToggle}
+            className={cn(user.status === 'active' ? "text-destructive focus:text-destructive" : "text-green-600 focus:text-green-600")}
           >
-            {user.active ? 'Deactivate User' : 'Activate User'}
+            {user.status === 'active' ? 'Deactivate' : 'Activate'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -75,6 +98,23 @@ const UserActions = ({ user }: { user: User }) => {
   )
 }
 
+const statusVariant: Record<User['status'], "default" | "secondary" | "destructive"> = {
+    'active': 'default',
+    'inactive': 'destructive',
+    'pending': 'secondary'
+}
+
+const statusIcon: Record<User['status'], React.ElementType> = {
+    'active': CheckCircle,
+    'inactive': XCircle,
+    'pending': Hourglass,
+}
+
+const statusColor: Record<User['status'], string> = {
+    'active': 'bg-green-500',
+    'inactive': 'bg-red-500',
+    'pending': 'bg-amber-500'
+}
 
 export const columns: ColumnDef<User>[] = [
   {
@@ -128,11 +168,12 @@ export const columns: ColumnDef<User>[] = [
     }
   },
   {
-    accessorKey: 'active',
+    accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => {
-        const isActive = row.getValue('active');
-        return <Badge variant={isActive ? "default" : "destructive"} className={cn(isActive ? 'bg-green-600' : '')}>{isActive ? 'Active' : 'Inactive'}</Badge>
+        const status = row.getValue('status') as User['status'];
+        const Icon = statusIcon[status];
+        return <Badge variant={statusVariant[status]} className={cn('capitalize', statusColor[status])}><Icon className="mr-1 h-3 w-3"/>{status}</Badge>
     }
   },
   {

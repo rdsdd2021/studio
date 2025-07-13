@@ -40,7 +40,7 @@ const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
-  active: z.boolean(),
+  status: z.enum(['pending', 'active', 'inactive']),
 })
 
 interface EditUserDialogProps {
@@ -64,7 +64,7 @@ export function EditUserDialog({
       name: user.name,
       phone: user.phone,
       role: user.role,
-      active: user.active,
+      status: user.status,
     },
   })
 
@@ -74,7 +74,7 @@ export function EditUserDialog({
         name: user.name,
         phone: user.phone,
         role: user.role,
-        active: user.active,
+        status: user.status,
       });
     }
   }, [user, form]);
@@ -161,21 +161,26 @@ export function EditUserDialog({
               />
                <FormField
                 control={form.control}
-                name="active"
+                name="status"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Status</FormLabel>
-                       <p className={cn("text-xs", field.value ? 'text-green-600' : 'text-destructive')}>
-                        This user is currently {field.value ? 'Active' : 'Inactive'}.
-                       </p>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                     <p className={cn("text-xs pt-1", field.value === 'active' ? 'text-green-600' : field.value === 'pending' ? 'text-amber-600' : 'text-destructive')}>
+                        User is currently {field.value}.
+                    </p>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

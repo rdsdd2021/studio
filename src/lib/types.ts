@@ -3,7 +3,7 @@ export interface User {
   name: string;
   phone: string;
   role: 'admin' | 'caller';
-  active: boolean;
+  status: 'pending' | 'active' | 'inactive';
   createdAt: string;
   avatar: string;
 }
@@ -34,4 +34,14 @@ export interface Assignment {
   subDisposition?: SubDisposition;
   subDispositionTime?: string;
   remark?: string;
+}
+
+export interface LoginActivity {
+    id: string;
+    userId: string;
+    userName: string;
+    timestamp: string;
+    activity: 'login' | 'logout';
+    ipAddress: string;
+    device: string;
 }
