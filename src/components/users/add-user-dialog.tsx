@@ -37,6 +37,7 @@ const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
 })
 
 interface AddUserDialogProps {
@@ -136,6 +137,19 @@ export function AddUserDialog({
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Initial Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="********" {...field} disabled={isSubmitting}/>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

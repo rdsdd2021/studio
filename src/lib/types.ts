@@ -7,6 +7,7 @@ export interface User {
   createdAt: string;
   avatar: string;
   loginStatus?: 'online' | 'offline';
+  password?: string;
 }
 
 export interface Lead {
