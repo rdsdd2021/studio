@@ -8,8 +8,6 @@ export interface User {
   avatar: string;
   loginStatus?: 'online' | 'offline';
   password?: string;
-  latitude?: number;
-  longitude?: number;
 }
 
 export interface Lead {

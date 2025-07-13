@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, User, FolderKanban, Activity, Globe } from "lucide-react"
+import { LayoutDashboard, Users, User, FolderKanban, Activity } from "lucide-react"
 
 export const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -6,5 +6,4 @@ export const navItems = [
   { href: "/my-leads", icon: User, label: "My Leads" },
   { href: "/users", icon: Users, label: "Users" },
   { href: "/tracker", icon: Activity, label: "Login Tracker" },
-  { href: "/geofencing", icon: Globe, label: "Geofencing" },
 ];

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react';
+import Image from "next/image";
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -35,19 +36,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { updateUser } from '@/actions/users'
 import type { User } from '@/lib/types'
 import { users } from '@/lib/data'
 import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils';
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
-  active: z.boolean(),
 })
 
 export default function AccountPage() {
@@ -64,7 +63,6 @@ export default function AccountPage() {
       name: user.name,
       phone: user.phone,
       role: user.role,
-      active: user.active,
     },
   })
 
@@ -92,8 +90,8 @@ export default function AccountPage() {
   return (
     <div className="flex flex-col gap-8">
        <div>
-        <h1 className="text-3xl font-bold font-headline tracking-tight">Account</h1>
-        <p className="text-muted-foreground">Manage your account settings and profile.</p>
+        <h1 className="text-3xl font-bold font-headline tracking-tight">Account & Settings</h1>
+        <p className="text-muted-foreground">Manage your profile and application settings.</p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
@@ -172,18 +170,43 @@ export default function AccountPage() {
         <TabsContent value="settings">
           <Card>
             <CardHeader>
-              <CardTitle>Application Settings</CardTitle>
-              <CardDescription>
-                Manage application-wide settings here. (Functionality to be added)
-              </CardDescription>
+                <CardTitle>Geofencing Configuration</CardTitle>
+                <CardDescription>
+                    Define the operational area for your team. Users logging in outside this area can be flagged or restricted.
+                </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">Notification preferences will be here.</p>
-                <p className="text-sm text-muted-foreground">Theme customization options will be here.</p>
-                <p className="text-sm text-muted-foreground">API integration settings will be here.</p>
+            <CardContent className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                    <div>
+                        <Label htmlFor="center-location">Center Location</Label>
+                        <Input id="center-location" placeholder="e.g., Connaught Place, New Delhi" defaultValue="Connaught Place, New Delhi" />
+                    </div>
+                    <div>
+                        <Label htmlFor="radius">Radius (in meters)</Label>
+                        <Input id="radius" placeholder="e.g., 5000" defaultValue="5000" type="number" />
+                    </div>
+                     <p className="text-sm text-muted-foreground pt-4">
+                        Other application-wide settings like notification preferences, API keys, and theme customization would appear here.
+                    </p>
+                </div>
+                <div className="relative rounded-lg overflow-hidden border bg-muted h-64 md:h-auto">
+                    <Image
+                        src="https://placehold.co/600x400.png"
+                        alt="Map placeholder"
+                        width={600}
+                        height={400}
+                        data-ai-hint="map"
+                        className="object-cover w-full h-full opacity-30"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center p-4">
+                        <div className="w-full h-full rounded-full bg-primary/20 border-2 border-dashed border-primary flex items-center justify-center">
+                            <span className="text-primary font-semibold text-sm bg-background/80 px-3 py-1 rounded-full">Operational Area</span>
+                        </div>
+                    </div>
+                </div>
             </CardContent>
-            <CardFooter  className="border-t px-6 py-4">
-              <Button disabled>Save Settings</Button>
+            <CardFooter className="border-t pt-6">
+                <Button>Save Settings</Button>
             </CardFooter>
           </Card>
         </TabsContent>
