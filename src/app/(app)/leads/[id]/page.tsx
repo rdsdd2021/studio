@@ -6,6 +6,8 @@ import { UpdateDispositionForm } from '@/components/leads/update-disposition-for
 import { User, Phone, School, MapPin, Milestone, Calendar } from 'lucide-react';
 import type { Assignment, Lead } from '@/lib/types';
 import { LeadDetailHeader } from '@/components/leads/lead-detail-header';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const lead = await getLeadDetails(params.id);
@@ -71,7 +73,15 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                   <Phone className="w-5 h-5 text-muted-foreground" />
                   <div>
                     <p className="text-muted-foreground">Phone</p>
-                    <p className="font-medium">{lead.phone}</p>
+                    <div className="flex items-center gap-2">
+                        <p className="font-medium">{lead.phone}</p>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                            <a href={`tel:${lead.phone}`}>
+                                <Phone className="h-4 w-4" />
+                                <span className="sr-only">Call lead</span>
+                            </a>
+                        </Button>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

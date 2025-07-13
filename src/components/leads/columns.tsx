@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Phone } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { Disposition } from '@/lib/types'
@@ -76,6 +76,18 @@ export const columns: ColumnDef<LeadData>[] = [
   {
     accessorKey: 'phone',
     header: 'Phone',
+    cell: ({ row }) => {
+      const phone = row.getValue('phone') as string;
+      return (
+        <div className="flex items-center gap-2">
+          <span>{phone}</span>
+          <a href={`tel:${phone}`} className="text-muted-foreground hover:text-primary">
+            <Phone className="h-4 w-4" />
+            <span className="sr-only">Call {phone}</span>
+          </a>
+        </div>
+      );
+    }
   },
   {
     accessorKey: 'school',
