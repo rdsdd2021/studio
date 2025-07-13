@@ -74,26 +74,141 @@ This setup makes the application fully interactive and allows for complete testi
 
 ## How to Make This App Launch-Ready
 
-To transition this prototype into a production application, you need to replace the mock data with a real backend database. The application is architected to make this process straightforward.
+To transition this prototype into a production application, you need to replace the mock data with a real backend database. The application is architected to make this process straightforward. This guide uses **Firebase** as the recommended backend, but the principles apply to any other service like Supabase.
 
-**High-Level Steps:**
+### Step 1: Set Up a Firebase Project
 
-1.  **Choose a Backend**: Select a backend service. **Firebase (Firestore)** or **Supabase** are excellent choices that work well with Next.js.
+1.  **Create a Firebase Project**:
+    -   Go to the [Firebase Console](https://console.firebase.google.com/).
+    -   Click "Add project" and follow the on-screen instructions.
 
-2.  **Set Up Your Backend Project**:
-    -   Create a new project in your chosen backend's console (e.g., Firebase Console).
-    -   Set up the database. For Firestore, you would create collections for `users`, `leads`, and `settings`.
-    -   Obtain your project's credentials (API keys, service account keys, etc.).
+2.  **Set Up Firestore Database**:
+    -   In your new project's console, go to the "Build" section in the left-hand menu and click on **Firestore Database**.
+    -   Click "Create database".
+    -   Start in **production mode**. This ensures your data is secure by default.
+    -   Choose a location for your database. Pick the one closest to your users.
 
-3.  **Connect Your App to the Backend**:
-    -   Install the necessary SDK package (e.g., `firebase-admin` for Firebase, `@supabase/supabase-js` for Supabase).
-    -   Create a connection file (e.g., `src/lib/firebase.ts`) to initialize the connection using your project credentials. Store these credentials securely in an `.env.local` file.
+3.  **Generate Service Account Credentials**:
+    -   For your Next.js server to securely communicate with Firebase services, it needs admin credentials.
+    -   In the Firebase Console, click the gear icon next to "Project Overview" and go to **Project settings**.
+    -   Navigate to the **Service accounts** tab.
+    -   Click **Generate new private key**. A JSON file containing your credentials will be downloaded. **Treat this file like a password and never expose it publicly.**
 
-4.  **Rewrite Server Actions**:
-    -   Go through each function in the `src/actions/*.ts` files.
-    -   Replace the code that manipulates the mock data arrays with asynchronous calls to your backend's SDK.
-    -   **Example (replacing mock data with Firestore)**:
-        -   *Before*: `leads.find(l => l.refId === id)`
-        -   *After*: `await db.collection('leads').doc(id).get()`
+### Step 2: Configure Your Local Environment
 
-5.  **Remove Mock Data**: Once all actions are rewritten, you can delete the mock data arrays from `src/lib/data.ts`.
+1.  **Create an Environment File**:
+    -   In the root of your project, rename the existing `.env` file to `.env.local`. This is a special file that Next.js automatically loads for environment variables.
+    -   Open the downloaded JSON key file and your new `.env.local` file.
+
+2.  **Add Credentials to `.env.local`**:
+    -   Copy the following key-value pairs from your JSON file into `.env.local`:
+        ```env
+        FIREBASE_PROJECT_ID="<your-project-id>"
+        FIREBASE_CLIENT_EMAIL="<your-client-email>"
+        ```
+    -   For the private key, you need to format it correctly. Copy the entire `private_key` string, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers. It will look like this:
+        ```env
+        FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_VERY_LONG_KEY_HERE\n-----END PRIVATE KEY-----\n"
+        ```
+        **Important**: The `\n` characters are essential. Make sure they are preserved as part of the string.
+
+### Step 3: Connect the App to Firebase
+
+This app uses a single file to manage the Firebase Admin SDK connection. You just need to uncomment the Firebase-related code.
+
+-   **File to edit**: `src/lib/firebase.ts` (This file might not exist if you haven't set up Firebase yet. If so, create it.)
+
+If you need to create `src/lib/firebase.ts`, use the following code. If it exists, replace its contents with this:
+```typescript
+import admin from 'firebase-admin';
+
+// This function ensures that Firebase is initialized only once.
+function getFirebaseAdminApp() {
+    if (admin.apps.length > 0) {
+        return admin.app();
+    }
+
+    const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    };
+    
+    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+        throw new Error("Firebase credentials are not set in the environment variables. Please check your .env.local file.");
+    }
+
+    return admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
+}
+
+// Initialize the app
+getFirebaseAdminApp();
+
+// Export the Firestore database instance
+export const db = admin.firestore();
+```
+
+### Step 4: Rewrite Server Actions
+
+This is the most critical step. You need to replace the functions that manipulate mock data with functions that interact with your Firestore database.
+
+**Location of Actions**: `src/actions/*.ts`
+
+**General Process**:
+For each function in `src/actions/leads.ts`, `src/actions/users.ts`, etc., you will:
+1.  Import the `db` instance from `src/lib/firebase.ts`.
+2.  Replace the array manipulation logic (e.g., `leads.find(...)`, `users.push(...)`) with Firestore SDK calls (e.g., `db.collection('leads').doc(id).get()`, `db.collection('users').add(...)`).
+
+**Example: Rewriting `getLeads()` in `src/actions/leads.ts`**
+
+*   **Before (Mock Data)**:
+    ```typescript
+    import { leads } from '@/lib/data';
+    // ...
+    export async function getLeads(): Promise<Lead[]> {
+      return JSON.parse(JSON.stringify(leads));
+    }
+    ```
+
+*   **After (Firestore)**:
+    ```typescript
+    import { db } from '@/lib/firebase';
+    import type { Lead } from "@/lib/types";
+    
+    export async function getLeads(): Promise<Lead[]> {
+        const leadsSnapshot = await db.collection('leads').get();
+        const leads: Lead[] = [];
+        leadsSnapshot.forEach(doc => {
+            leads.push({ refId: doc.id, ...doc.data() } as Lead);
+        });
+        return leads;
+    }
+    ```
+You will need to repeat this process for **all functions** in the `src/actions/` directory that read from or write to the mock data arrays.
+
+### Step 5: Setting Up Genkit for AI Features
+
+The AI-powered disposition suggestion will work out-of-the-box once your environment is set up.
+
+1.  **Enable the AI API**: Go to the [Google AI Studio](https://aistudio.google.com/) and get an API key.
+2.  **Add API Key to Environment**: Add the following line to your `.env.local` file:
+    ```env
+    GOOGLE_API_KEY="<your-google-ai-api-key>"
+    ```
+
+### Step 6: Deploying to Production
+
+A platform like **Vercel** or **Firebase Hosting** is recommended for deploying a Next.js app.
+
+1.  **Choose a Hosting Provider**: Vercel is the easiest option as it's made by the creators of Next.js.
+2.  **Import Your Git Repository**: Connect your GitHub, GitLab, or Bitbucket account to your hosting provider and import the project repository.
+3.  **Configure Environment Variables**: In your hosting provider's project settings (e.g., Vercel's "Environment Variables" section), add all the variables from your `.env.local` file:
+    -   `FIREBASE_PROJECT_ID`
+    -   `FIREBASE_CLIENT_EMAIL`
+    -   `FIREBEASE_PRIVATE_KEY`
+    -   `GOOGLE_API_KEY`
+4.  **Deploy**: Push your code to the `main` branch. The hosting provider will automatically build and deploy your application.
+
+After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready infrastructure.
