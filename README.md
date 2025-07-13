@@ -1,6 +1,6 @@
 # LeadsFlow
 
-This is a Next.js application for a lead management system called LeadsFlow. It serves as a high-fidelity prototype that is fully functional using mock data, and is designed to be easily connected to a production backend like Firebase or Supabase.
+This is a Next.js application for a lead management system called LeadsFlow. It serves as a high-fidelity prototype that is fully functional using mock data, and is designed to be easily connected to a production backend like Supabase.
 
 ## Core Features
 
@@ -36,7 +36,7 @@ The application is designed around two primary user roles: **Admin** and **Calle
 | **Lead Detail** | `/leads/[id]` | ✅ | ✅ | View detailed information and history for a single lead. Callers can add info to empty custom fields. |
 | **User Management** | `/users` | ✅ | ❌ | Add, edit, approve, and deactivate users. |
 | **Login Tracker** | `/tracker` | ✅ | ❌ | View a log of user login/logout activity. |
-| **Account/Settings**| `/account` | ✅ | ✅ | Manage personal profile and application-wide settings (e.g., custom fields). |
+| **Account/Settings**| `/account` | ✅ | ✅ | Manage personal profile and application-wide settings (e.g., custom fields, dispositions, geofencing). |
 
 ### User Flow
 
@@ -52,7 +52,7 @@ The application is designed around two primary user roles: **Admin** and **Calle
     -   On the detail page, they can see all lead details. In the "Additional Information" section, they can fill in any custom fields that are currently empty.
     -   Once a field is updated, it becomes read-only, displaying the value, the name of the caller who updated it, and the date of the update.
     -   The caller can then use the "Update Status" form to log the call's outcome. The AI Suggestion feature can help them choose the best sub-disposition.
-6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like custom fields for campaigns and geofencing.
+6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like custom fields, dispositions, and geofencing.
 
 ---
 
@@ -72,94 +72,154 @@ This setup makes the application fully interactive and allows for complete testi
 
 ---
 
-## How to Make This App Launch-Ready
+## How to Make This App Launch-Ready with Supabase
 
-To transition this prototype into a production application, you need to replace the mock data with a real backend database. The application is architected to make this process straightforward. This guide uses **Firebase** as the recommended backend, but the principles apply to any other service like Supabase.
+To transition this prototype into a production application, you need to replace the mock data with a real Supabase backend. The application is architected to make this process straightforward.
 
-### Step 1: Set Up a Firebase Project
+### Step 1: Set Up a Supabase Project
 
-1.  **Create a Firebase Project**:
-    -   Go to the [Firebase Console](https://console.firebase.google.com/).
-    -   Click "Add project" and follow the on-screen instructions.
+1.  **Create a Supabase Project**:
+    -   Go to [supabase.com](https://supabase.com/), sign in, and click "New project".
+    -   Give your project a name, generate a secure database password, and choose a region.
 
-2.  **Set Up Firestore Database**:
-    -   In your new project's console, go to the "Build" section in the left-hand menu and click on **Firestore Database**.
-    -   Click "Create database".
-    -   Start in **production mode**. This ensures your data is secure by default.
-    -   Choose a location for your database. Pick the one closest to your users.
-
-3.  **Generate Service Account Credentials**:
-    -   For your Next.js server to securely communicate with Firebase services, it needs admin credentials.
-    -   In the Firebase Console, click the gear icon next to "Project Overview" and go to **Project settings**.
-    -   Navigate to the **Service accounts** tab.
-    -   Click **Generate new private key**. A JSON file containing your credentials will be downloaded. **Treat this file like a password and never expose it publicly.**
+2.  **Get API Credentials**:
+    -   Once the project is ready, navigate to the **Project Settings** (the gear icon).
+    -   Go to the **API** section.
+    -   You will need three values from this page:
+        -   **Project URL**
+        -   **`anon` `public` key**
+        -   **`service_role` `secret` key**
 
 ### Step 2: Configure Your Local Environment
 
 1.  **Create an Environment File**:
     -   In the root of your project, rename the existing `.env` file to `.env.local`. This is a special file that Next.js automatically loads for environment variables.
-    -   Open the downloaded JSON key file and your new `.env.local` file.
 
 2.  **Add Credentials to `.env.local`**:
-    -   Copy the following key-value pairs from your JSON file into `.env.local`:
+    -   Add your Supabase credentials to the `.env.local` file. It's important to prefix the client-side keys with `NEXT_PUBLIC_`.
         ```env
-        FIREBASE_PROJECT_ID="<your-project-id>"
-        FIREBASE_CLIENT_EMAIL="<your-client-email>"
+        NEXT_PUBLIC_SUPABASE_URL="<your-project-url>"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY="<your-anon-key>"
+        SUPABASE_SERVICE_ROLE_KEY="<your-service-role-key>"
         ```
-    -   For the private key, you need to format it correctly. Copy the entire `private_key` string, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers. It will look like this:
-        ```env
-        FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_VERY_LONG_KEY_HERE\n-----END PRIVATE KEY-----\n"
-        ```
-        **Important**: The `\n` characters are essential. Make sure they are preserved as part of the string.
 
-### Step 3: Connect the App to Firebase
+### Step 3: Set Up Database Schema
 
-This app uses a single file to manage the Firebase Admin SDK connection. You just need to uncomment the Firebase-related code.
+In your Supabase project dashboard, go to the **SQL Editor** and run the following queries to create the necessary tables and types.
 
--   **File to edit**: `src/lib/firebase.ts` (This file might not exist if you haven't set up Firebase yet. If so, create it.)
+```sql
+-- Create custom enum types for roles and statuses
+CREATE TYPE user_role AS ENUM ('admin', 'caller');
+CREATE TYPE user_status AS ENUM ('pending', 'active', 'inactive');
+CREATE TYPE disposition_type AS ENUM ('New', 'Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable');
 
-If you need to create `src/lib/firebase.ts`, use the following code. If it exists, replace its contents with this:
-```typescript
-import admin from 'firebase-admin';
+-- 1. Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    phone TEXT,
+    role user_role NOT NULL,
+    status user_status NOT NULL DEFAULT 'pending',
+    avatar TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-// This function ensures that Firebase is initialized only once.
-function getFirebaseAdminApp() {
-    if (admin.apps.length > 0) {
-        return admin.app();
-    }
+-- 2. Campaigns Table
+CREATE TABLE campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
-    
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        throw new Error("Firebase credentials are not set in the environment variables. Please check your .env.local file.");
-    }
+-- 3. Leads Table
+CREATE TABLE leads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    gender TEXT,
+    school TEXT,
+    locality TEXT,
+    district TEXT,
+    custom_fields JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-    return admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
-}
+-- 4. Lead Campaigns Junction Table (Many-to-Many)
+CREATE TABLE lead_campaigns (
+    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+    campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+    PRIMARY KEY (lead_id, campaign_id)
+);
 
-// Initialize the app
-getFirebaseAdminApp();
+-- 5. Assignment History Table
+CREATE TABLE assignment_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES users(id) NOT NULL,
+    user_name TEXT NOT NULL,
+    assigned_time TIMESTAMPTZ DEFAULT NOW(),
+    disposition disposition_type,
+    disposition_time TIMESTAMPTZ,
+    sub_disposition TEXT,
+    remark TEXT,
+    follow_up_date DATE,
+    schedule_date DATE
+);
 
-// Export the Firestore database instance
-export const db = admin.firestore();
+-- 6. Login Activity Table
+CREATE TABLE login_activity (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    user_name TEXT NOT NULL,
+    activity TEXT NOT NULL, -- 'login' or 'logout'
+    ip_address INET,
+    device TEXT,
+    timestamp TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. App Settings (Key-Value Store)
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value JSONB
+);
+
+-- Insert default geofence settings
+INSERT INTO settings (key, value) VALUES ('geofence', '{"centerLocation": "Connaught Place, New Delhi", "radius": 5000}');
 ```
 
-### Step 4: Rewrite Server Actions
+### Step 4: Create Supabase Clients
 
-This is the most critical step. You need to replace the functions that manipulate mock data with functions that interact with your Firestore database.
+Create a file at `src/lib/supabase.ts` to manage your Supabase client instances for server-side and client-side code.
+
+```typescript
+import { createClient } from '@supabase/supabase-js';
+
+// Client for use in client-side components and pages
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Admin client for use in server actions and route handlers
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
+```
+
+### Step 5: Rewrite Server Actions
+
+This is the most critical step. You need to replace the functions that manipulate mock data with functions that interact with your Supabase database.
 
 **Location of Actions**: `src/actions/*.ts`
 
 **General Process**:
-For each function in `src/actions/leads.ts`, `src/actions/users.ts`, etc., you will:
-1.  Import the `db` instance from `src/lib/firebase.ts`.
-2.  Replace the array manipulation logic (e.g., `leads.find(...)`, `users.push(...)`) with Firestore SDK calls (e.g., `db.collection('leads').doc(id).get()`, `db.collection('users').add(...)`).
+For each function, you will:
+1.  Import the `supabaseAdmin` instance from `src/lib/supabase.ts`.
+2.  Replace the array manipulation logic (e.g., `leads.find(...)`, `users.push(...)`) with Supabase SDK calls (e.g., `supabaseAdmin.from('leads').select()`).
 
 **Example: Rewriting `getLeads()` in `src/actions/leads.ts`**
 
@@ -172,23 +232,30 @@ For each function in `src/actions/leads.ts`, `src/actions/users.ts`, etc., you w
     }
     ```
 
-*   **After (Firestore)**:
+*   **After (Supabase)**:
     ```typescript
-    import { db } from '@/lib/firebase';
+    import { supabaseAdmin } from '@/lib/supabase';
     import type { Lead } from "@/lib/types";
     
     export async function getLeads(): Promise<Lead[]> {
-        const leadsSnapshot = await db.collection('leads').get();
-        const leads: Lead[] = [];
-        leadsSnapshot.forEach(doc => {
-            leads.push({ refId: doc.id, ...doc.data() } as Lead);
-        });
-        return leads;
+        const { data, error } = await supabaseAdmin.from('leads').select('*');
+
+        if (error) {
+            console.error('Error fetching leads:', error);
+            throw new Error('Could not fetch leads.');
+        }
+
+        // Note: You may need to transform the data to match your `Lead` type exactly.
+        // For example, Supabase returns `id`, your type expects `refId`.
+        return data.map(lead => ({
+            ...lead,
+            refId: lead.id,
+        })) as Lead[];
     }
     ```
-You will need to repeat this process for **all functions** in the `src/actions/` directory that read from or write to the mock data arrays.
+You will need to repeat this process for **all functions** in the `src/actions/` directory.
 
-### Step 5: Setting Up Genkit for AI Features
+### Step 6: Setting Up Genkit for AI Features
 
 The AI-powered disposition suggestion will work out-of-the-box once your environment is set up.
 
@@ -198,17 +265,19 @@ The AI-powered disposition suggestion will work out-of-the-box once your environ
     GOOGLE_API_KEY="<your-google-ai-api-key>"
     ```
 
-### Step 6: Deploying to Production
+### Step 7: Deploying to Production
 
-A platform like **Vercel** or **Firebase Hosting** is recommended for deploying a Next.js app.
+A platform like **Vercel** or **Netlify** is recommended for deploying a Next.js app.
 
 1.  **Choose a Hosting Provider**: Vercel is the easiest option as it's made by the creators of Next.js.
 2.  **Import Your Git Repository**: Connect your GitHub, GitLab, or Bitbucket account to your hosting provider and import the project repository.
 3.  **Configure Environment Variables**: In your hosting provider's project settings (e.g., Vercel's "Environment Variables" section), add all the variables from your `.env.local` file:
-    -   `FIREBASE_PROJECT_ID`
-    -   `FIREBASE_CLIENT_EMAIL`
-    -   `FIREBEASE_PRIVATE_KEY`
+    -   `NEXT_PUBLIC_SUPABASE_URL`
+    -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+    -   `SUPABASE_SERVICE_ROLE_KEY`
     -   `GOOGLE_API_KEY`
 4.  **Deploy**: Push your code to the `main` branch. The hosting provider will automatically build and deploy your application.
 
-After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready infrastructure.
+After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready Supabase infrastructure.
+
+    
