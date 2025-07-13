@@ -99,7 +99,7 @@ export const columns: ColumnDef<LeadData>[] = [
     header: 'Assigned Date',
     cell: ({ row }) => {
         const date = row.getValue('assignedTime') as string | undefined;
-        return date ? new Date(date).toLocaleDateString() : <span className='text-muted-foreground'>N/A</span>
+        return date ? new Date(date).toLocaleDateString('en-CA') : <span className='text-muted-foreground'>N/A</span>
     }
   },
   {
