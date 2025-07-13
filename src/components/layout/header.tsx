@@ -26,24 +26,10 @@ import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { LeadsFlowLogo } from "../icons"
 import { navItems } from "@/lib/nav-items"
-import { EditUserDialog } from "../users/edit-user-dialog"
-import { users } from "@/lib/data"
-import type { User } from "@/lib/types"
 
 export function Header() {
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  // In a real app, you'd get the current user from session/auth context
-  const currentUser = users.find(u => u.role === 'admin') as User;
-
   return (
     <>
-      {currentUser && (
-        <EditUserDialog 
-          isOpen={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          user={currentUser}
-        />
-      )}
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-card px-4 sm:px-6">
         <div className="flex items-center gap-4 sm:hidden">
           <Sheet>
@@ -103,10 +89,14 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>Profile</DropdownMenuItem>
-            <DropdownMenuItem disabled>Settings</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/account">Account</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+               <Link href="/login">Log out</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
