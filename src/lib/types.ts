@@ -43,6 +43,8 @@ export interface Assignment {
   subDisposition?: SubDisposition;
   subDispositionTime?: string;
   remark?: string;
+  followUpDate?: string;
+  scheduleDate?: string;
 }
 
 export interface LoginActivity {

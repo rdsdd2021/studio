@@ -20,14 +20,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { addAssignment } from '@/actions/leads'
 import type { Disposition, SubDisposition, Assignment, Lead } from '@/lib/types'
-import { BrainCircuit } from 'lucide-react'
+import { BrainCircuit, CalendarIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Checkbox } from '../ui/checkbox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
+import { cn } from '@/lib/utils'
+import { format } from 'date-fns'
 
 const dispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 const subDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
@@ -38,6 +46,8 @@ const FormSchema = z.object({
   remark: z.string().min(10, {
     message: "Remark must be at least 10 characters.",
   }),
+  followUpDate: z.date().optional(),
+  scheduleDate: z.date().optional(),
   nextLead: z.boolean().default(true),
 })
 
@@ -66,6 +76,11 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
   })
 
   const remarkValue = form.watch('remark');
+  const dispositionValue = form.watch('disposition');
+  const subDispositionValue = form.watch('subDisposition');
+
+  const showFollowUpPicker = dispositionValue === 'Follow-up' || dispositionValue === 'Callback';
+  const showSchedulePicker = dispositionValue === 'Interested' && subDispositionValue === 'Will Join Later';
 
   const handleSuggest = async () => {
     if (!remarkValue || remarkValue.length < 10) {
@@ -115,7 +130,15 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true);
     try {
-      await addAssignment(leadId, 'usr_3', data.disposition, data.subDisposition, data.remark);
+      await addAssignment(
+        leadId, 
+        'usr_3', 
+        data.disposition, 
+        data.subDisposition, 
+        data.remark,
+        data.followUpDate,
+        data.scheduleDate
+      );
       
       form.reset({ remark: '', nextLead: data.nextLead });
 
@@ -239,6 +262,94 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
             </FormItem>
           )}
         />
+
+        {showFollowUpPicker && (
+            <FormField
+                control={form.control}
+                name="followUpDate"
+                render={({ field }) => (
+                <FormItem className="flex flex-col">
+                    <FormLabel>Follow-up Date</FormLabel>
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <FormControl>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                            )}
+                        >
+                            {field.value ? (
+                            format(field.value, "PPP")
+                            ) : (
+                            <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                        </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                            date < new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                        />
+                    </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        )}
+        
+        {showSchedulePicker && (
+            <FormField
+                control={form.control}
+                name="scheduleDate"
+                render={({ field }) => (
+                <FormItem className="flex flex-col">
+                    <FormLabel>Schedule Date</FormLabel>
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <FormControl>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                            )}
+                        >
+                            {field.value ? (
+                            format(field.value, "PPP")
+                            ) : (
+                            <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                        </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                            date < new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                        />
+                    </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        )}
 
         <FormField
           control={form.control}

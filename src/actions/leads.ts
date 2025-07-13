@@ -32,7 +32,9 @@ export async function addAssignment(
   userId: string,
   disposition: Disposition,
   subDisposition: SubDisposition,
-  remark: string
+  remark: string,
+  followUpDate?: Date,
+  scheduleDate?: Date
 ): Promise<Assignment> {
     const user = users.find(u => u.id === userId);
     if (!user) {
@@ -51,6 +53,8 @@ export async function addAssignment(
         subDisposition,
         subDispositionTime: now.toISOString(),
         remark,
+        followUpDate: followUpDate?.toISOString(),
+        scheduleDate: scheduleDate?.toISOString(),
     };
     
     assignmentHistory.unshift(newAssignment);
