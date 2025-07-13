@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,65 @@ import { MoreHorizontal } from 'lucide-react'
 import type { User } from '@/lib/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { EditUserDialog } from '@/components/users/edit-user-dialog'
+import { toggleUserStatus } from '@/actions/users'
+import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
+
+
+const UserActions = ({ user }: { user: User }) => {
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const handleToggleStatus = async () => {
+    try {
+      await toggleUserStatus(user.id, user.active);
+      toast({
+        title: `User ${user.active ? 'Deactivated' : 'Activated'}`,
+        description: `${user.name} has been successfully ${user.active ? 'deactivated' : 'activated'}.`,
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: 'Update Failed',
+        description: 'Could not update user status. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  return (
+    <>
+      <EditUserDialog 
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        user={user}
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+            Edit User
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={handleToggleStatus}
+            className={cn(user.active ? "text-destructive focus:text-destructive" : "text-green-600 focus:text-green-600")}
+          >
+            {user.active ? 'Deactivate User' : 'Activate User'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  )
+}
+
 
 export const columns: ColumnDef<User>[] = [
   {
@@ -51,7 +111,10 @@ export const columns: ColumnDef<User>[] = [
                     <AvatarImage src={user.avatar} alt={user.name} />
                     <AvatarFallback>{nameFallback}</AvatarFallback>
                 </Avatar>
-                <span className="font-medium">{user.name}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">{user.phone}</span>
+                </div>
             </div>
         )
     }
@@ -82,24 +145,6 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => {
-      const user = row.original
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Edit User</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">Deactivate User</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
+    cell: ({ row }) => <UserActions user={row.original} />,
   },
 ]
