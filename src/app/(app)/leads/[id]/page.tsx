@@ -5,6 +5,7 @@ import { AssignmentHistory } from '@/components/leads/assignment-history';
 import { UpdateDispositionForm } from '@/components/leads/update-disposition-form';
 import { User, Phone, School, MapPin, Milestone, Calendar } from 'lucide-react';
 import type { Assignment, Lead } from '@/lib/types';
+import { LeadDetailHeader } from '@/components/leads/lead-detail-header';
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const lead = await getLeadDetails(params.id);
@@ -34,16 +35,22 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const myLeadIds = new Set(myLeadAssignments.map(a => a.mainDataRefId));
   const myLeads = allLeads.filter(l => myLeadIds.has(l.refId));
 
+  const currentIndex = myLeads.findIndex(l => l.refId === params.id);
+  const previousLeadId = currentIndex > 0 ? myLeads[currentIndex - 1].refId : undefined;
+  const nextLeadId = currentIndex < myLeads.length - 1 ? myLeads[currentIndex + 1].refId : undefined;
+
 
   // Mocking the current user as a caller
   const currentUserRole = 'caller';
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline tracking-tight">{lead.name}</h1>
-        <p className="text-muted-foreground">Lead ID: {lead.refId}</p>
-      </div>
+      <LeadDetailHeader 
+        leadName={lead.name}
+        leadId={lead.refId}
+        previousLeadId={previousLeadId}
+        nextLeadId={nextLeadId}
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">

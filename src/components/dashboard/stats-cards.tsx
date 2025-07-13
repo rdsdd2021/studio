@@ -1,3 +1,5 @@
+'use client';
+
 import type { Lead, Assignment } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, CheckCircle, FolderKanban } from 'lucide-react';
