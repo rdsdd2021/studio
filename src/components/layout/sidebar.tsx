@@ -4,16 +4,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LeadsFlowLogo } from "@/components/icons"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { LayoutDashboard, Users, User, FolderKanban } from "lucide-react"
-
-const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/leads", icon: FolderKanban, label: "All Leads" },
-  { href: "/my-leads", icon: User, label: "My Leads" },
-  { href: "/users", icon: Users, label: "Users" },
-];
+import { navItems } from "@/lib/nav-items"
 
 export function Sidebar() {
   const pathname = usePathname();
