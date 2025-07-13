@@ -89,16 +89,20 @@ export function DataTable<TData, TValue>({
     },
   })
 
+  const showToolbar = !!(callers || schoolOptions || localityOptions || districtOptions || genderOptions);
+
   return (
     <div className="space-y-4">
-      <DataTableToolbar 
-        table={table} 
-        callers={callers}
-        schoolOptions={schoolOptions}
-        localityOptions={localityOptions}
-        districtOptions={districtOptions}
-        genderOptions={genderOptions}
-      />
+      {showToolbar && (
+        <DataTableToolbar 
+          table={table} 
+          callers={callers}
+          schoolOptions={schoolOptions}
+          localityOptions={localityOptions}
+          districtOptions={districtOptions}
+          genderOptions={genderOptions}
+        />
+      )}
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
