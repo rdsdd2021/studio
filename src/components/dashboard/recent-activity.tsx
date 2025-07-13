@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import type { Assignment } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "../ui/badge";
@@ -20,6 +21,17 @@ const dispositionColors: Record<string, string> = {
     'Not Reachable': 'bg-gray-400',
     'New': 'bg-purple-500',
 }
+
+function FormattedDate({ dateString }: { dateString: string }) {
+    const [formattedDate, setFormattedDate] = React.useState('');
+
+    React.useEffect(() => {
+        setFormattedDate(new Date(dateString).toLocaleString());
+    }, [dateString]);
+
+    return <>{formattedDate}</>;
+}
+
 
 export function RecentActivity({ assignments }: RecentActivityProps) {
 
@@ -53,7 +65,7 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
                              {assignment.subDisposition && <span className="text-muted-foreground">&rarr; {assignment.subDisposition}</span>}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            {new Date(assignment.dispositionTime!).toLocaleString()}
+                            {assignment.dispositionTime && <FormattedDate dateString={assignment.dispositionTime} />}
                         </p>
                     </div>
                 </div>
