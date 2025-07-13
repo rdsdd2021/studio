@@ -26,8 +26,13 @@ import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { LeadsFlowLogo } from "../icons"
 import { navItems } from "@/lib/nav-items"
+import { users } from "@/lib/data"
 
 export function Header() {
+  // In a real app, this would come from an auth context
+  const currentUser = users.find(u => u.role === 'admin');
+  const nameFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
+
   return (
     <>
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-card px-4 sm:px-6">
@@ -74,17 +79,17 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src="/avatars/01.png" alt="@adminuser" />
-                <AvatarFallback>AU</AvatarFallback>
+                <AvatarImage src={currentUser?.avatar} alt={currentUser?.name || 'User'} />
+                <AvatarFallback>{nameFallback}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Admin User</p>
+                <p className="text-sm font-medium leading-none">{currentUser?.name || 'User'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  admin@leadsflow.com
+                  {currentUser ? `${currentUser.name.toLowerCase().replace(' ', '')}@leadsflow.com` : ''}
                 </p>
               </div>
             </DropdownMenuLabel>

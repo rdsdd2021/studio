@@ -1,9 +1,10 @@
 'use client';
 import * as React from 'react';
-import type { Assignment } from "@/lib/types";
+import type { Assignment, User } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import { users } from '@/lib/data';
 
 interface RecentActivityProps {
     assignments: Assignment[];
@@ -46,30 +47,33 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
 
     return (
         <div className="space-y-6">
-            {recentAssignments.map((assignment) => (
-                <div key={assignment.id} className="flex items-start gap-4">
-                    <Avatar className="h-9 w-9">
-                         <AvatarImage src={`/avatars/${assignment.userId.split('_')[1]}.png`} alt={assignment.userName} />
-                        <AvatarFallback>{getInitials(assignment.userName)}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid gap-1 text-sm">
-                        <p className="font-medium">
-                            {assignment.userName}
-                            <span className="font-normal text-muted-foreground"> updated lead </span> 
-                            <span className="font-medium text-primary">{assignment.mainDataRefId}</span>
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className={cn("capitalize text-white", dispositionColors[assignment.disposition!] || 'bg-gray-500')}>
-                                {assignment.disposition}
-                            </Badge>
-                             {assignment.subDisposition && <span className="text-muted-foreground">&rarr; {assignment.subDisposition}</span>}
+            {recentAssignments.map((assignment) => {
+                const user = users.find(u => u.id === assignment.userId);
+                return (
+                    <div key={assignment.id} className="flex items-start gap-4">
+                        <Avatar className="h-9 w-9">
+                            <AvatarImage src={user?.avatar} alt={assignment.userName} />
+                            <AvatarFallback>{getInitials(assignment.userName)}</AvatarFallback>
+                        </Avatar>
+                        <div className="grid gap-1 text-sm">
+                            <p className="font-medium">
+                                {assignment.userName}
+                                <span className="font-normal text-muted-foreground"> updated lead </span> 
+                                <span className="font-medium text-primary">{assignment.mainDataRefId}</span>
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className={cn("capitalize text-white", dispositionColors[assignment.disposition!] || 'bg-gray-500')}>
+                                    {assignment.disposition}
+                                </Badge>
+                                {assignment.subDisposition && <span className="text-muted-foreground">&rarr; {assignment.subDisposition}</span>}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {assignment.dispositionTime && <FormattedDate dateString={assignment.dispositionTime} />}
+                            </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            {assignment.dispositionTime && <FormattedDate dateString={assignment.dispositionTime} />}
-                        </p>
                     </div>
-                </div>
-            ))}
+                )
+            })}
         </div>
     )
 }

@@ -164,7 +164,7 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
           render={({ field }) => (
             <FormItem>
               <FormLabel>Disposition</FormLabel>
-              <Select onValuechange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger disabled={isSubmitting}>
                     <SelectValue placeholder="Select a disposition" />
