@@ -1,9 +1,7 @@
 import admin from 'firebase-admin';
-import { App, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import type { App } from 'firebase-admin/app';
+import { getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-
-// The 'dotenv' config is now handled in the genkit dev entry point (src/ai/dev.ts)
-// to ensure variables are loaded before any other code runs.
 
 const getFirebaseAdminApp = (): App => {
   if (getApps().length > 0) {
