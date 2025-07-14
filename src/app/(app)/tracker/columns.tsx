@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import type { LoginActivity } from '@/lib/types'
 import { LogIn, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FormattedDate } from '@/components/dashboard/recent-activity'
 
 export const columns: ColumnDef<LoginActivity>[] = [
   {
@@ -30,7 +31,7 @@ export const columns: ColumnDef<LoginActivity>[] = [
     header: 'Timestamp',
     cell: ({ row }) => {
         const date = row.getValue('timestamp') as string;
-        return new Date(date).toLocaleString()
+        return <FormattedDate dateString={date} />
     }
   },
   {

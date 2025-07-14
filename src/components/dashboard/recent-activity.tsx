@@ -22,7 +22,7 @@ const dispositionColors: Record<string, string> = {
     'New': 'bg-purple-500',
 }
 
-function FormattedDate({ dateString }: { dateString: string }) {
+export function FormattedDate({ dateString }: { dateString: string }) {
     const [formattedDate, setFormattedDate] = React.useState('');
 
     React.useEffect(() => {
