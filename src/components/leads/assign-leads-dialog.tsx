@@ -31,8 +31,8 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { assignLeads } from '@/actions/leads'
+import { getUsers } from '@/actions/users'
 import type { User } from '@/lib/types'
-import { users } from '@/lib/data'
 
 const FormSchema = z.object({
   userId: z.string({ required_error: 'Please select a caller.' }),
@@ -52,6 +52,18 @@ export function AssignLeadsDialog({
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [callers, setCallers] = React.useState<User[]>([]);
+
+  React.useEffect(() => {
+    async function fetchCallers() {
+      const allUsers = await getUsers();
+      const activeCallers = allUsers.filter(u => u.role === 'caller' && u.status === 'active');
+      setCallers(activeCallers);
+    }
+    if (isOpen) {
+      fetchCallers();
+    }
+  }, [isOpen])
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -84,8 +96,6 @@ export function AssignLeadsDialog({
       setIsSubmitting(false)
     }
   }
-
-  const callers = users.filter(u => u.role === 'caller' && u.status === 'active');
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

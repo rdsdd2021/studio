@@ -1,10 +1,9 @@
+import { getLoginActivity } from '@/actions/users';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from './columns';
-import { loginActivity } from '@/lib/data';
 
 export default async function TrackerPage() {
-  // In a real app, this data would be fetched from your backend service
-  const data = loginActivity;
+  const data = await getLoginActivity();
 
   return (
     <div className="container mx-auto py-2">

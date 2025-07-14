@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -23,10 +24,10 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { importLeads } from '@/actions/leads'
+import { getCampaignCustomFields, getUniversalCustomFields } from '@/actions/settings'
 import type { Lead } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Lightbulb, FileQuestion, Map, Download } from 'lucide-react'
-import { campaignCustomFields, universalCustomFields } from '@/lib/data'
 
 
 interface ImportLeadsDialogProps {
@@ -35,8 +36,7 @@ interface ImportLeadsDialogProps {
 }
 
 const requiredFields = ['name', 'phone'];
-// MOCK: In real app, this would be fetched
-const uniqueCampaigns: string[] = Object.keys(campaignCustomFields);
+const DO_NOT_MAP_VALUE = '__do_not_map__';
 
 
 export function ImportLeadsDialog({
@@ -51,6 +51,25 @@ export function ImportLeadsDialog({
   const [headers, setHeaders] = React.useState<string[]>([]);
   const [selectedCampaign, setSelectedCampaign] = React.useState<string>('');
   const [fieldMapping, setFieldMapping] = React.useState<Record<string, string>>({});
+  
+  const [universalCustomFields, setUniversalCustomFields] = React.useState<string[]>([]);
+  const [campaignCustomFields, setCampaignCustomFields] = React.useState<Record<string, string[]>>({});
+  const uniqueCampaigns = Object.keys(campaignCustomFields);
+
+  React.useEffect(() => {
+    async function fetchCustomFields() {
+        const [uFields, cFields] = await Promise.all([
+            getUniversalCustomFields(),
+            getCampaignCustomFields(),
+        ]);
+        setUniversalCustomFields(uFields);
+        setCampaignCustomFields(cFields);
+    }
+    if (isOpen) {
+        fetchCustomFields();
+    }
+  }, [isOpen])
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -129,7 +148,7 @@ export function ImportLeadsDialog({
             
             const processField = (fieldName: string) => {
                 const mappedHeader = fieldMapping[fieldName];
-                if (mappedHeader && row[mappedHeader]) {
+                if (mappedHeader && mappedHeader !== DO_NOT_MAP_VALUE && row[mappedHeader]) {
                     customFields[fieldName] = {
                         value: row[mappedHeader],
                         updatedBy: 'Import',
@@ -219,7 +238,7 @@ export function ImportLeadsDialog({
                             <SelectValue placeholder="No specific campaign" />
                         </SelectTrigger>
                         <SelectContent>
-                             <SelectItem value="">No specific campaign</SelectItem>
+                             <SelectItem value={DO_NOT_MAP_VALUE}>No specific campaign</SelectItem>
                             {uniqueCampaigns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                         </SelectContent>
                     </Select>
@@ -237,7 +256,7 @@ export function ImportLeadsDialog({
                                         <SelectValue placeholder="Select CSV column..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">-- Do not map --</SelectItem>
+                                        <SelectItem value={DO_NOT_MAP_VALUE}>-- Do not map --</SelectItem>
                                         {headers.map(header => <SelectItem key={header} value={header}>{header}</SelectItem>)}
                                     </SelectContent>
                                 </Select>

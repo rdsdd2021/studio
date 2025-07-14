@@ -1,17 +1,17 @@
-import type { Assignment, Lead } from '@/lib/types';
+import type { Assignment, Lead, User } from '@/lib/types';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { DispositionChart } from '@/components/dashboard/disposition-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RecentActivity } from '@/components/dashboard/recent-activity';
-import { users } from '@/lib/data';
 import { TeamPerformanceChart } from './team-performance-chart';
 
 interface AdminDashboardProps {
   leads: Lead[];
   assignments: Assignment[];
+  users: User[];
 }
 
-export function AdminDashboard({ leads, assignments }: AdminDashboardProps) {
+export function AdminDashboard({ leads, assignments, users }: AdminDashboardProps) {
 
   const callers = users.filter(u => u.role === 'caller');
 

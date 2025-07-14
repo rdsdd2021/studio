@@ -4,10 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AssignmentHistory } from '@/components/leads/assignment-history';
 import { UpdateDispositionForm } from '@/components/leads/update-disposition-form';
 import { User, Phone, School, MapPin, Milestone, Calendar, Info, Pencil, UserCircle, CalendarDays } from 'lucide-react';
-import type { Assignment, Lead } from '@/lib/types';
+import type { Assignment, Lead, User as UserType } from '@/lib/types';
 import { LeadDetailHeader } from '@/components/leads/lead-detail-header';
-import { universalCustomFields, campaignCustomFields } from '@/lib/data';
+import { getUniversalCustomFields, getCampaignCustomFields } from '@/actions/settings';
 import { UpdateCustomFieldForm } from '@/components/leads/update-custom-field-form';
+import { getUsers } from '@/actions/users';
+
+// In a real application, you would get the current user from an authentication session.
+// For this prototype, we'll simulate a logged-in caller to demonstrate functionality.
+async function getSimulatedCurrentUser(): Promise<UserType | undefined> {
+    const users = await getUsers();
+    // Find the first active caller to simulate being logged in as them.
+    return users.find(u => u.role === 'caller' && u.status === 'active');
+}
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const lead = await getLeadDetails(params.id);
@@ -17,13 +26,17 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   const history = await getAssignmentHistory(params.id);
   
-  // Mocking current user as a caller
-  const currentUserId = 'usr_3'; 
-  const currentUserRole = 'caller';
-
+  // Simulate getting the current user from session.
+  const currentUser = await getSimulatedCurrentUser();
+  
   // To find the next lead, we need the full list of "My Leads"
   const allLeads = await getLeads();
   const allAssignments = await getAssignments();
+  
+  const [universalCustomFields, campaignCustomFields] = await Promise.all([
+    getUniversalCustomFields(),
+    getCampaignCustomFields()
+  ]);
 
   const latestAssignments = new Map<string, Assignment>();
   allAssignments.forEach(assignment => {
@@ -33,9 +46,9 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
     }
   });
 
-  const myLeadAssignments = Array.from(latestAssignments.values()).filter(
-    (a) => a.userId === currentUserId
-  );
+  const myLeadAssignments = currentUser ? Array.from(latestAssignments.values()).filter(
+    (a) => a.userId === currentUser.id
+  ) : [];
   
   const myLeadIds = new Set(myLeadAssignments.map(a => a.mainDataRefId));
   const myLeads = allLeads.filter(l => myLeadIds.has(l.refId));
@@ -123,7 +136,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 text-sm">
                   {allCustomFieldsForLead.map((fieldName) => {
                     const fieldData = lead.customFields?.[fieldName];
-                    const isEditable = !fieldData?.value;
+                    const isEditable = !fieldData?.value && currentUser?.role === 'caller';
 
                     return (
                       <div className="space-y-1.5" key={fieldName}>
@@ -135,15 +148,17 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                            <UpdateCustomFieldForm 
                               leadId={lead.refId}
                               fieldName={fieldName}
-                              currentUserId={currentUserId}
+                              currentUserId={currentUser.id}
                             />
                         ) : (
                           <div>
-                            <p className="font-semibold text-base px-3 py-2 bg-muted rounded-md">{fieldData.value}</p>
-                             <div className="flex items-center justify-end text-xs text-muted-foreground gap-4 pt-1 pr-1">
-                                <div className="flex items-center gap-1"><UserCircle className="h-3 w-3" /> {fieldData.updatedBy}</div>
-                                <div className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {new Date(fieldData.updatedAt!).toLocaleDateString()}</div>
-                            </div>
+                            <p className="font-semibold text-base px-3 py-2 bg-muted rounded-md">{fieldData?.value || 'N/A'}</p>
+                             {fieldData?.updatedBy && (
+                                <div className="flex items-center justify-end text-xs text-muted-foreground gap-4 pt-1 pr-1">
+                                    <div className="flex items-center gap-1"><UserCircle className="h-3 w-3" /> {fieldData.updatedBy}</div>
+                                    <div className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {new Date(fieldData.updatedAt!).toLocaleDateString()}</div>
+                                </div>
+                             )}
                           </div>
                         )}
                       </div>
@@ -166,14 +181,14 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         </div>
 
         <div className="md:col-span-1">
-          {currentUserRole === 'caller' && (
+          {currentUser?.role === 'caller' && (
             <Card>
               <CardHeader>
                 <CardTitle>Update Status</CardTitle>
                 <CardDescription>Log the outcome of your call.</CardDescription>
               </CardHeader>
               <CardContent>
-                <UpdateDispositionForm leadId={lead.refId} history={history} myLeads={myLeads} />
+                <UpdateDispositionForm leadId={lead.refId} currentUserId={currentUser.id} history={history} myLeads={myLeads} />
               </CardContent>
             </Card>
           )}

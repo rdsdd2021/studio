@@ -9,19 +9,21 @@ export interface GeofenceSettings {
 }
 
 async function getSettingsDoc(key: string) {
+    if (!db) return null;
     const docRef = db.collection('settings').doc(key);
     const doc = await docRef.get();
     return doc;
 }
 
 async function saveSettingsDoc(key: string, value: any) {
+    if (!db) { throw new Error("Database not configured."); }
     const docRef = db.collection('settings').doc(key);
     await docRef.set({ value });
 }
 
 export async function getGeofenceSettings(): Promise<GeofenceSettings> {
     const doc = await getSettingsDoc('geofence');
-    if (doc.exists) {
+    if (doc?.exists) {
         return doc.data()?.value as GeofenceSettings;
     }
     // Return default if not set
@@ -35,12 +37,18 @@ export async function saveGeofenceSettings(settings: GeofenceSettings): Promise<
 
 export async function getUniversalCustomFields(): Promise<string[]> {
     const doc = await getSettingsDoc('universalCustomFields');
-    return doc.exists ? doc.data()?.value : ['Source', 'Previous Course'];
+    if (doc?.exists) {
+        return doc.data()?.value;
+    }
+    return ['Source', 'Previous Course'];
 }
 
 export async function getCampaignCustomFields(): Promise<Record<string, string[]>> {
     const doc = await getSettingsDoc('campaignCustomFields');
-    return doc.exists ? doc.data()?.value : {
+    if (doc?.exists) {
+        return doc.data()?.value;
+    }
+    return {
         'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
         'Diwali Dhamaka': ["Reference ID"],
     };

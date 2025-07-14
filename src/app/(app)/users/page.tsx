@@ -9,11 +9,7 @@ import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { AddUserDialog } from '@/components/users/add-user-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getUsers } from '@/actions/users';
-
-// This is still using mock data, in a real app, this would be fetched from the DB
-import { loginActivity } from '@/lib/data';
-
+import { getUsers, getLoginActivity } from '@/actions/users';
 
 export default function UsersPage() {
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
@@ -21,8 +17,11 @@ export default function UsersPage() {
 
   React.useEffect(() => {
     async function fetchUsers() {
-      const users = await getUsers();
-      // In a real app, this login activity would also be fetched from the DB
+      const [users, loginActivity] = await Promise.all([
+          getUsers(),
+          getLoginActivity()
+      ]);
+
       const latestActivityMap = new Map<string, LoginActivity>();
 
       loginActivity

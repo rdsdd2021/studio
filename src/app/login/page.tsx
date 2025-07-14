@@ -9,26 +9,44 @@ import { Label } from "@/components/ui/label"
 import { LeadsFlowLogo } from '@/components/icons'
 import { useRouter } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { users } from '@/lib/data'
+import { getUsers } from '@/actions/users'
+import type { User } from '@/lib/types'
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = React.useState('admin@leadsflow.com');
   const [password, setPassword] = React.useState('password123');
   const [error, setError] = React.useState<string | null>(null);
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    const fetchUsersData = async () => {
+      try {
+        const fetchedUsers = await getUsers();
+        setUsers(fetchedUsers);
+      } catch (e) {
+        setError('Could not fetch user data. Please try again later.')
+      }
+    }
+    fetchUsersData();
+  }, [])
+
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsSubmitting(true);
 
     // This is a mock authentication check.
     // In a real app, you would make an API call to your backend.
     
     // Find the user by email
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (!user) {
         setError("Invalid email or password.");
+        setIsSubmitting(false);
         return;
     }
 
@@ -51,6 +69,7 @@ export default function LoginPage() {
         default:
             setError("An unknown error occurred. Please try again.");
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -76,6 +95,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
               />
             </div>
             <div className="grid gap-2">
@@ -91,6 +111,7 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
               />
             </div>
             {error && (
@@ -98,11 +119,11 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
-              Login
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>
+              {isSubmitting ? 'Logging in...' : 'Login'}
             </Button>
              <CardDescription className="text-center text-xs pt-2">
-                Use `admin@leadsflow.com`, `jane.doe@leadsflow.com`, or `john.smith@leadsflow.com` (pw: `password123`)
+                Log in with a user from the User Management page.
              </CardDescription>
           </form>
         </CardContent>

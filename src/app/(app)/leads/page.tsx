@@ -1,12 +1,15 @@
 import { getLeads, getAssignments } from '@/actions/leads';
+import { getUsers } from '@/actions/users';
 import type { Lead, Assignment, User } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from '@/components/leads/columns';
-import { users } from '@/lib/data';
 
 export default async function LeadsPage() {
-  const allLeads = await getLeads();
-  const allAssignments = await getAssignments();
+  const [allLeads, allAssignments, allUsers] = await Promise.all([
+    getLeads(),
+    getAssignments(),
+    getUsers(),
+  ]);
 
   const latestAssignments = new Map<string, Assignment>();
   allAssignments.forEach(assignment => {
@@ -26,7 +29,7 @@ export default async function LeadsPage() {
     }
   });
 
-  const callers = users.filter(u => u.role === 'caller').map(u => ({ label: u.name, value: u.name }));
+  const callers = allUsers.filter(u => u.role === 'caller').map(u => ({ label: u.name, value: u.name }));
 
   const getUniqueOptions = (fieldName: keyof Lead) => {
     const values = new Set(allLeads.map(lead => lead[fieldName]).filter(Boolean));

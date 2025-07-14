@@ -1,16 +1,31 @@
 'use server'
 
 import { db } from '@/lib/firebase';
-import type { User } from "@/lib/types"
+import type { User, LoginActivity } from "@/lib/types"
 import { revalidatePath } from "next/cache"
 
 export async function getUsers(): Promise<User[]> {
-    if (!db) return [];
-    const snapshot = await db.collection('users').get();
+    if (!db) {
+        console.warn('DB not configured, returning empty list for users.');
+        return [];
+    }
+    const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
     if (snapshot.empty) {
         return [];
     }
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+}
+
+export async function getLoginActivity(): Promise<LoginActivity[]> {
+    if (!db) {
+        console.warn('DB not configured, returning empty list for login activity.');
+        return [];
+    }
+    const snapshot = await db.collection('loginActivity').orderBy('timestamp', 'desc').get();
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LoginActivity));
 }
 
 export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {

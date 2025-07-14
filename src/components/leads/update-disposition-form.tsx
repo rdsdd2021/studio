@@ -58,11 +58,12 @@ type SuggestionResponse = {
 
 interface UpdateDispositionFormProps {
   leadId: string;
+  currentUserId: string;
   history: Assignment[];
   myLeads: Lead[];
 }
 
-export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispositionFormProps) {
+export function UpdateDispositionForm({ leadId, currentUserId, history, myLeads }: UpdateDispositionFormProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -132,7 +133,7 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
     try {
       await addAssignment(
         leadId, 
-        'usr_3', 
+        currentUserId, 
         data.disposition, 
         data.subDisposition, 
         data.remark,

@@ -1,13 +1,13 @@
+
 'use server'
 
 import { db } from '@/lib/firebase';
-import { leads as mockLeads, assignmentHistory as mockAssignments } from '@/lib/data';
 import type { Lead, Assignment, Disposition, SubDisposition } from "@/lib/types"
 
 export async function getLeads(): Promise<Lead[]> {
   if (!db) {
-    console.warn('DB not configured, returning mock leads.');
-    return JSON.parse(JSON.stringify(mockLeads));
+    console.warn('DB not configured, returning empty list for leads.');
+    return [];
   }
   const snapshot = await db.collection('leads').orderBy('createdAt', 'desc').get();
   if (snapshot.empty) {
@@ -18,8 +18,8 @@ export async function getLeads(): Promise<Lead[]> {
 
 export async function getAssignments(): Promise<Assignment[]> {
     if (!db) {
-        console.warn('DB not configured, returning mock assignments.');
-        return JSON.parse(JSON.stringify(mockAssignments));
+        console.warn('DB not configured, returning empty list for assignments.');
+        return [];
     }
     const snapshot = await db.collection('assignmentHistory').orderBy('assignedTime', 'desc').get();
     if (snapshot.empty) {
@@ -30,7 +30,8 @@ export async function getAssignments(): Promise<Assignment[]> {
 
 export async function getLeadDetails(id: string): Promise<Lead | undefined> {
   if (!db) {
-    return mockLeads.find(l => l.refId === id);
+    console.warn('DB not configured, returning undefined for lead details.');
+    return undefined;
   }
   const doc = await db.collection('leads').doc(id).get();
   if (!doc.exists) {
@@ -41,7 +42,8 @@ export async function getLeadDetails(id: string): Promise<Lead | undefined> {
 
 export async function getAssignmentHistory(leadId: string): Promise<Assignment[]> {
     if (!db) {
-        return mockAssignments.filter(a => a.mainDataRefId === leadId);
+        console.warn('DB not configured, returning empty list for assignment history.');
+        return [];
     }
   const snapshot = await db.collection('assignmentHistory')
     .where('mainDataRefId', '==', leadId)
