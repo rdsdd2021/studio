@@ -26,42 +26,6 @@ This is a Next.js application for a lead management system called LeadsFlow. It'
 
 ---
 
-## Application Structure & Workflow
-
-The application is designed around two primary user roles: **Admin** and **Caller**.
-
-### User Roles & Access
-
-| Page                | Route         | Admin Access | Caller Access | Description                                                                                          |
-| :------------------ | :------------ | :----------: | :-----------: | :--------------------------------------------------------------------------------------------------- |
-| **Dashboard**       | `/dashboard`  |      ✅      |       ✅      | Role-specific overview of lead statistics and recent activity.                                       |
-| **All Leads**       | `/leads`      |      ✅      |       ❌      | View, filter, and assign all leads in the system.                                                    |
-| **My Leads**        | `/my-leads`   |      ❌      |       ✅      | View only the leads specifically assigned to the logged-in caller.                                   |
-| **Lead Detail**     | `/leads/[id]` |      ✅      |       ✅      | View detailed information and history for a single lead. Callers can add info to empty custom fields. |
-| **User Management** | `/users`      |      ✅      |       ❌      | Add, edit, approve, and deactivate users.                                                            |
-| **Login Tracker**   | `/tracker`    |      ✅      |       ❌      | View a log of user login/logout activity.                                                            |
-| **Account/Settings**| `/account`    |      ✅      |       ✅      | Manage personal profile and application-wide settings (e.g., custom fields, dispositions, geofencing). |
-
-### User Flow
-
-1.  **Login**: A user logs in via the `/login` page using Firebase Authentication (email/password).
-2.  **Dashboard**: After logging in, the user lands on their role-specific Dashboard.
-    -   **Admin**: Sees a high-level overview of team performance, total leads, and recent system activity.
-    -   **Caller**: Sees their personal statistics, a list of upcoming follow-ups, and a button to start calling leads.
-3.  **Lead Import (Admin)**: An Admin can navigate to "All Leads" and use the "Import" button.
-    -   They upload a CSV file. The only mandatory columns are `name` and `phone`. A sample file is available for download.
-    -   Optionally, they can select a campaign. If they do, the system displays the custom fields defined for that campaign.
-    -   The admin can then map columns from their CSV file to these custom fields.
-    -   Upon import, new leads are created with the mapped data.
-4.  **Lead Management (Admin)**: An Admin can use filters on the "All Leads" page (`/leads`) to select specific leads and assign them in bulk to an active "Caller" user. They can also add campaign tags to multiple leads at once.
-5.  **Caller Workflow (Caller)**: A Caller navigates to "My Leads" (`/my-leads`) to see their queue. They can click on a lead to go to the "Lead Detail" page (`/leads/[id]`).
-    -   On the detail page, they can see all lead details. In the "Additional Information" section, they can fill in any custom fields that are currently empty.
-    -   Once a field is updated, it becomes read-only, displaying the value, the name of the caller who updated it, and the date of the update.
-    -   The caller can then use the "Update Status" form to log the call's outcome, with date pickers appearing for follow-ups or scheduled appointments. The AI Suggestion feature can help them choose the best sub-disposition.
-6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like universal/campaign custom fields, custom dispositions, and geofencing. These settings are saved live to the database.
-
----
-
 ## How to Set Up and Deploy with Firebase App Hosting
 
 ### Step 1: Set Up Your Firebase Project
@@ -72,31 +36,54 @@ The application is designed around two primary user roles: **Admin** and **Calle
     *   **Firestore**: Go to the "Firestore Database" section, click "Create database", start in **production mode**, and choose a location.
 3.  **Create a Web App**: In your Firebase project settings, under the "General" tab, scroll down to "Your apps" and click the web icon (`</>`) to create a new web app. Give it a nickname and Firebase will provide you with a `firebaseConfig` object.
 
-### Step 2: Configure Your Local Environment
+### Step 2: Configure Your Local Environment (CRUCIAL)
 
-1.  **Create `.env.local`**: In the root of your project, create a file named `.env.local`.
-2.  **Add `NEXT_PUBLIC_FIREBASE_CONFIG`**: Copy the entire `firebaseConfig` object from the Firebase console and add it to your `.env.local` file like this:
-    ```env
-    NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"...","measurementId":"..."}'
-    ```
-    **Important**: The value must be a single line of JSON, enclosed in single quotes.
-3.  **Add `GOOGLE_API_KEY`**: For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
-    ```env
-    GOOGLE_API_KEY="<your-google-ai-api-key>"
-    ```
+**To run the app locally, you must provide the Firebase Admin SDK with service account credentials.**
+
+1.  **Generate a Service Account Key:**
+    *   In the Firebase Console, go to **Project Settings** (click the gear icon).
+    *   Go to the **Service accounts** tab.
+    *   Click the **Generate new private key** button. A JSON file will be downloaded.
+2.  **Move the Key File:**
+    *   Rename the downloaded JSON file to `service-account.json`.
+    *   Move this `service-account.json` file to the **root directory** of this project.
+3.  **Create `.env.local` file:**
+    *   In the root of your project, create a new file named `.env.local`.
+4.  **Add Environment Variables:**
+    *   Copy the entire `firebaseConfig` object from the Firebase console (from Step 1.3) and add it to your `.env.local` file like this:
+        ```env
+        NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"...","measurementId":"..."}'
+        ```
+        **Important**: The value must be a single line of JSON, enclosed in single quotes.
+    *   Add the path to your service account file. Since you placed it in the root, the value will be `./service-account.json`:
+        ```env
+        GOOGLE_APPLICATION_CREDENTIALS="./service-account.json"
+        ```
+    *   For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
+        ```env
+        GOOGLE_API_KEY="<your-google-ai-api-key>"
+        ```
+    *   Your final `.env.local` file should look like this:
+        ```env
+        NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"..."}'
+        GOOGLE_APPLICATION_CREDENTIALS="./service-account.json"
+        GOOGLE_API_KEY="<your-google-ai-api-key>"
+        ```
 
 ### Step 3: Create Your First Admin User
 
-Since the "master admin" has been removed for better security, you need to create your first user directly in the Firebase console.
+Since there is no "master admin", you need to create your first user directly in the Firebase console so you can log in.
 
 1.  Go to the **Authentication** section in your Firebase project.
 2.  Click "Add user" and create a user with an email and password.
-3.  Go to the **Firestore Database** section. Create a new collection called `users`.
-4.  Create a new document in the `users` collection. **The Document ID must be the same as the User UID** from the Authentication tab.
-5.  Add the following fields to the document:
+3.  Copy the **User UID** for the user you just created.
+4.  Go to the **Firestore Database** section.
+5.  Create a new collection called `users`.
+6.  Create a new document in the `users` collection. **The Document ID must be the same as the User UID** you copied.
+7.  Add the following fields to the document:
     *   `name`: (string) Your name
-    *   `email`: (string) The email you just used
-    *   `phone`: (string) Your phone number
+    *   `email`: (string) The email you used for the user
+    *   `phone`: (string) Your phone number (e.g., "1234567890")
     *   `role`: (string) Set this to `admin`
     *   `status`: (string) Set this to `active`
     *   `createdAt`: (string) `2024-01-01T00:00:00.000Z` (or any valid ISO date)

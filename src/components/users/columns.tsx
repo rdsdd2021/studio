@@ -142,6 +142,7 @@ export const columns: ColumnDef<User>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
+        disabled={true} // Disable row selection for users for now
       />
     ),
     enableSorting: false,

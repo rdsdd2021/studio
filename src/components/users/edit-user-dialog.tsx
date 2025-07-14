@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast'
 import { updateUser } from '@/actions/users'
 import type { User } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -56,6 +57,7 @@ export function EditUserDialog({
 }: EditUserDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const { user: currentUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -157,7 +159,11 @@ export function EditUserDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      disabled={user.id === currentUser?.id}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a role" />
@@ -168,6 +174,7 @@ export function EditUserDialog({
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
+                    {user.id === currentUser?.id && <p className="text-xs text-muted-foreground">Admins cannot change their own role.</p>}
                     <FormMessage />
                   </FormItem>
                 )}
