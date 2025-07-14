@@ -158,27 +158,44 @@ export async function addUser(newUser: Omit<User, 'id' | 'createdAt' | 'status'>
   const token = authHeader.split('Bearer ')[1];
   const currentUser = await verifyUser(token, 'admin');
 
+  let authUserId: string | null = null;
+
   try {
+    console.log('Creating user with data:', { 
+      email: newUser.email, 
+      role: newUser.role, 
+      hasPhone: !!newUser.phone 
+    });
+
     // Create user in Supabase Auth with metadata
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: newUser.email,
       password: newUser.password!,
-      phone: newUser.phone,
+      phone: newUser.phone || undefined,
       user_metadata: {
         name: newUser.name,
         role: newUser.role,
-        phone: newUser.phone,
+        phone: newUser.phone || null,
         created_by: currentUser.name
       },
       email_confirm: true // Auto-confirm email
     });
 
-    if (authError || !authData.user) {
-      throw new Error(`Failed to create auth user: ${authError?.message || 'Unknown error'}`);
+    if (authError) {
+      console.error('Auth user creation failed:', authError);
+      throw new Error(`Failed to create auth user: ${authError.message}`);
     }
 
-    // Wait a moment for the sync trigger to create the user record
-    await new Promise(resolve => setTimeout(resolve, 100));
+    if (!authData.user) {
+      throw new Error('Auth user creation returned no user data');
+    }
+
+    authUserId = authData.user.id;
+    console.log('Auth user created successfully:', authUserId);
+
+    // Wait for the sync trigger to create the user record
+    console.log('Waiting for sync trigger...');
+    await new Promise(resolve => setTimeout(resolve, 500)); // Increased wait time
 
     // Fetch the created user record from the users table (created by sync trigger)
     const { data: userData, error: fetchError } = await supabase
@@ -187,21 +204,126 @@ export async function addUser(newUser: Omit<User, 'id' | 'createdAt' | 'status'>
       .eq('id', authData.user.id)
       .single();
 
-    if (fetchError || !userData) {
-      // If sync trigger failed, clean up auth user and throw error
+    if (fetchError) {
+      console.error('Error fetching user record:', fetchError);
+      // Clean up auth user if database record wasn't created
       await supabase.auth.admin.deleteUser(authData.user.id);
-      throw new Error(`User record not created by sync trigger: ${fetchError?.message || 'Unknown error'}`);
+      throw new Error(`User record not found after creation: ${fetchError.message}`);
     }
 
+    if (!userData) {
+      console.error('No user data returned from database');
+      // Clean up auth user if no data returned
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw new Error('User record not created by sync trigger - no data returned');
+    }
+
+    console.log('User created successfully:', userData.id);
     return convertDbUserToUser(userData);
+
   } catch (error) {
-    // If anything fails, make sure to clean up
-    throw new Error(`Database error creating new user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('User creation failed:', error);
+    
+    // Clean up auth user if it was created
+    if (authUserId) {
+      try {
+        await supabase.auth.admin.deleteUser(authUserId);
+        console.log('Cleaned up auth user:', authUserId);
+      } catch (cleanupError) {
+        console.error('Failed to clean up auth user:', cleanupError);
+      }
+    }
+    
+    // Re-throw the original error with context
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error(`Unknown error during user creation: ${error}`);
+    }
   }
 }
 
 // Keep createUser as an alias for backward compatibility
 export const createUser = addUser;
+
+export async function addUserManual(newUser: Omit<User, 'id' | 'createdAt' | 'status'>) {
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error("No authentication token found.");
+  }
+
+  const token = authHeader.split('Bearer ')[1];
+  const currentUser = await verifyUser(token, 'admin');
+
+  let authUserId: string | null = null;
+
+  try {
+    console.log('Manual user creation - Creating auth user:', newUser.email);
+
+    // Create user in Supabase Auth (simpler approach)
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: newUser.email,
+      password: newUser.password!,
+      phone: newUser.phone || undefined,
+      email_confirm: true
+    });
+
+    if (authError) {
+      console.error('Auth user creation failed:', authError);
+      throw new Error(`Failed to create auth user: ${authError.message}`);
+    }
+
+    if (!authData.user) {
+      throw new Error('Auth user creation returned no user data');
+    }
+
+    authUserId = authData.user.id;
+    console.log('Auth user created, now creating database record...');
+
+    // Manually insert into users table using service role
+    const { data, error } = await supabase
+      .from('users')
+      .insert([{
+        id: authData.user.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone || null,
+        role: newUser.role,
+        status: 'pending' as const,
+        created_by: currentUser.name,
+        created_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database insertion failed:', error);
+      // Clean up auth user
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw new Error(`Database insertion failed: ${error.message}`);
+    }
+
+    console.log('User created successfully via manual method');
+    return convertDbUserToUser(data);
+
+  } catch (error) {
+    console.error('Manual user creation failed:', error);
+    
+    // Clean up auth user if it was created
+    if (authUserId) {
+      try {
+        await supabase.auth.admin.deleteUser(authUserId);
+        console.log('Cleaned up auth user');
+      } catch (cleanupError) {
+        console.error('Failed to clean up auth user:', cleanupError);
+      }
+    }
+    
+    throw error;
+  }
+}
 
 export async function getLoginActivity(): Promise<any[]> {
   const headersList = await headers();
