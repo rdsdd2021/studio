@@ -43,30 +43,37 @@ This is a Next.js application for a lead management system called LeadsFlow. It'
 1.  **Generate a Service Account Key:**
     *   In the Firebase Console, go to **Project Settings** (click the gear icon).
     *   Go to the **Service accounts** tab.
-    *   Click the **Generate new private key** button. A JSON file will be downloaded.
-2.  **Move the Key File:**
-    *   Rename the downloaded JSON file to `service-account.json`.
-    *   Move this `service-account.json` file to the **root directory** of this project.
-3.  **Create `.env.local` file:**
+    *   Click the **Generate new private key** button. A JSON file will be downloaded. **Keep this file secure and do not commit it to version control.**
+
+2.  **Create `.env.local` file:**
     *   In the root of your project, create a new file named `.env.local`.
-4.  **Add Environment Variables:**
-    *   Copy the entire `firebaseConfig` object from the Firebase console (from Step 1.3) and add it to your `.env.local` file like this:
+
+3.  **Add Environment Variables:**
+    *   **Copy Web App Config**: Copy the entire `firebaseConfig` object from the Firebase console (from Step 1.3) and add it to your `.env.local` file like this:
         ```env
         NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"...","measurementId":"..."}'
         ```
         **Important**: The value must be a single line of JSON, enclosed in single quotes.
-    *   Add the path to your service account file. Since you placed it in the root, the value will be `./service-account.json`:
+
+    *   **Copy Service Account Details**: Open the `service-account.json` file you downloaded. You will need three values from it: `project_id`, `client_email`, and `private_key`. Add them to your `.env.local` file like this:
         ```env
-        GOOGLE_APPLICATION_CREDENTIALS="./service-account.json"
+        FIREBASE_PROJECT_ID="your-project-id-from-json"
+        FIREBASE_CLIENT_EMAIL="your-client-email@..."
+        FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n....your private key...\n-----END PRIVATE KEY-----\n"
         ```
-    *   For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
+        **Important**: For `FIREBASE_PRIVATE_KEY`, copy the entire key including the `-----BEGIN...` and `-----END...` lines. It must be enclosed in double quotes (`"`) and all newline characters within the key must be represented as `\n`.
+
+    *   **Add AI API Key**: For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
         ```env
         GOOGLE_API_KEY="<your-google-ai-api-key>"
         ```
-    *   Your final `.env.local` file should look like this:
+
+    *   Your final `.env.local` file should look similar to this:
         ```env
         NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"..."}'
-        GOOGLE_APPLICATION_CREDENTIALS="./service-account.json"
+        FIREBASE_PROJECT_ID="my-leadsflow-app"
+        FIREBASE_CLIENT_EMAIL="firebase-adminsdk-..."
+        FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nABC...XYZ\n-----END PRIVATE KEY-----\n"
         GOOGLE_API_KEY="<your-google-ai-api-key>"
         ```
 
@@ -145,3 +152,4 @@ service cloud.firestore {
     firebase apphosting:backends:deploy
     ```
     The CLI will guide you through creating the backend resource and deploying your app. After it finishes, it will provide you with the URL to your live application.
+
