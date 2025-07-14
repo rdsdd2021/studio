@@ -380,6 +380,11 @@ The following issues have been **completely fixed** in the latest version:
 - **Solution Applied**: Enhanced sync trigger with proper error handling
 - **Test**: Log in as admin → Users page → Add User → Works flawlessly
 
+**✅ "useAuth must be used within an AuthProvider"**
+- **Status**: **FIXED** - Authentication context properly configured
+- **Solution Applied**: Added AuthProvider wrapper to root layout
+- **Test**: Login page loads without errors → Authentication works perfectly
+
 **✅ "null value in column 'phone' violates not-null constraint"**
 - **Status**: **FIXED** - Phone field is now nullable  
 - **Solution Applied**: Updated database schema and migration
@@ -394,9 +399,14 @@ The following issues have been **completely fixed** in the latest version:
 
 **Q: How do I create the first admin user?**
 1. Run the Supabase migration (creates sample admin user)
-2. OR create user in Supabase Auth dashboard
+2. OR create user in Supabase Auth dashboard (see `SUPABASE_AUTH_DASHBOARD_FIX.md` if errors occur)
 3. Set `role` to `admin` and `status` to `active` in users table
 4. Phone field is optional during setup
+
+**Q: Getting "useAuth must be used within an AuthProvider" error?**
+- **Solution**: This has been fixed in the latest version
+- **Cause**: AuthProvider wasn't properly wrapping the application
+- **Test**: Restart your dev server → Login page should load correctly
 
 **Q: How do I test user creation?**
 1. Log in as admin

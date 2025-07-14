@@ -16,32 +16,6 @@ import { useAuth } from '@/hooks/use-auth'
 export const dynamic = 'force-dynamic'
 
 export default function LoginPage() {
-  const [mounted, setMounted] = React.useState(false);
-  
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
-        <div className="flex items-center justify-center py-12">
-          <div className="mx-auto grid w-[350px] gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Loading...</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return <LoginPageContent />;
-}
-
-function LoginPageContent() {
   const router = useRouter();
   const { signIn, loading } = useAuth();
   const [email, setEmail] = React.useState('admin@example.com'); // Default test user
