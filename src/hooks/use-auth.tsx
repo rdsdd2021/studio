@@ -1,100 +1,124 @@
 
 'use client';
 import * as React from 'react';
-import {
-  getAuth,
-  onIdTokenChanged,
-  signOut as firebaseSignOut,
-  type User as FirebaseUser,
-} from 'firebase/auth';
-import { app } from '@/lib/client-firebase';
+import { supabase } from '@/lib/client-supabase';
 import type { User } from '@/lib/types';
 import { getAuthenticatedUser } from '@/actions/users';
 import { useRouter } from 'next/navigation';
+import type { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
-  firebaseUser: FirebaseUser | null;
+  session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-// Set up an interceptor for fetch to automatically add the auth token
-const originalFetch = fetch;
-let idToken: string | null = null;
-
-globalThis.fetch = async (input, init) => {
-  const newInit = { ...init };
-  if (idToken) {
-    newInit.headers = {
-      ...newInit.headers,
-      Authorization: `Bearer ${idToken}`,
-    };
-  }
-  return originalFetch(input, newInit);
-};
-
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = React.useState<User | null>(null);
-  const [firebaseUser, setFirebaseUser] = React.useState<FirebaseUser | null>(null);
+  const [session, setSession] = React.useState<Session | null>(null);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!app) {
-        setLoading(false);
-        return;
-    }
-    const auth = getAuth(app);
-    const unsubscribe = onIdTokenChanged(auth, async (fbUser) => {
-      setFirebaseUser(fbUser);
-      if (fbUser) {
-        idToken = await fbUser.getIdToken();
-        try {
-          // Check if we already have the user data in localStorage to avoid flashes
-          const storedUser = localStorage.getItem('currentUser');
-          if (storedUser) {
-              setUser(JSON.parse(storedUser));
-          } else {
-             const { user: appUser } = await getAuthenticatedUser(idToken);
-             setUser(appUser);
-             localStorage.setItem('currentUser', JSON.stringify(appUser));
-          }
-        } catch (error) {
-          console.error("Failed to fetch authenticated user data", error);
-          await firebaseSignOut(auth); // Sign out if custom user data fails
-          setUser(null);
-          idToken = null;
-          localStorage.removeItem('currentUser');
-          router.push('/login');
-        }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.access_token) {
+        fetchUserData(session.access_token);
       } else {
-        setUser(null);
-        idToken = null;
-        localStorage.removeItem('currentUser');
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      
+      if (session?.access_token) {
+        await fetchUserData(session.access_token);
+      } else {
+        setUser(null);
+        localStorage.removeItem('currentUser');
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [router]);
 
-  const signOut = async () => {
-    if(app) {
-        const auth = getAuth(app);
-        await firebaseSignOut(auth);
+  const fetchUserData = async (accessToken: string) => {
+    try {
+      // Check if we already have the user data in localStorage to avoid flashes
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+        setLoading(false);
+      }
+
+      const { user: appUser } = await getAuthenticatedUser(accessToken);
+      setUser(appUser);
+      localStorage.setItem('currentUser', JSON.stringify(appUser));
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch authenticated user data", error);
+      await signOut();
+      router.push('/login');
     }
-    setUser(null);
-    setFirebaseUser(null);
-    idToken = null;
-    localStorage.removeItem('currentUser');
   };
 
+  const signIn = async (email: string, password: string): Promise<void> => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setUser(null);
+      setSession(null);
+      localStorage.removeItem('currentUser');
+    }
+  };
+
+  // Set up fetch interceptor for authorization
+  React.useEffect(() => {
+    const originalFetch = window.fetch;
+    
+    window.fetch = async (input, init) => {
+      const newInit = { ...init };
+      
+      if (session?.access_token) {
+        newInit.headers = {
+          ...newInit.headers,
+          Authorization: `Bearer ${session.access_token}`,
+        };
+      }
+      
+      return originalFetch(input, newInit);
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [session]);
+
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut, signIn }}>
       {children}
     </AuthContext.Provider>
   );

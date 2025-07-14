@@ -66,7 +66,10 @@ export function AddUserDialog({
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true)
     try {
-      await addUser(data)
+      await addUser({
+        ...data,
+        avatar: '' // Add default empty avatar
+      })
       toast({
         title: 'User Added!',
         description: `${data.name} has been added and is pending approval.`,

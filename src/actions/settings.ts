@@ -1,42 +1,21 @@
 
 'use server'
 
-import { db, auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import type { User } from "@/lib/types"
+import { verifyUser } from '@/lib/auth';
 import { headers } from 'next/headers';
-
-async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
-    if (!auth || !db) throw new Error("Authentication services not available.");
-    
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-
-    if (!userDoc.exists) {
-        throw new Error("User not found in database.");
-    }
-
-    const user = { id: userDoc.id, ...userDoc.data() } as User;
-
-    if (requiredRole && user.role !== requiredRole) {
-        throw new Error(`Unauthorized: User does not have the required role ('${requiredRole}').`);
-    }
-
-    if (user.status !== 'active') {
-        throw new Error("User account is not active.");
-    }
-    
-    return user;
-}
 
 export async function getUniversalCustomFields(): Promise<string[]> {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  await verifyUser(idToken);
+  const token = authHeader.split('Bearer ')[1];
+  await verifyUser(token);
 
   // Return static custom fields for now
   return [
@@ -53,13 +32,14 @@ export async function getUniversalCustomFields(): Promise<string[]> {
 
 export async function getCampaignCustomFields(): Promise<Record<string, string[]>> {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  await verifyUser(idToken);
+  const token = authHeader.split('Bearer ')[1];
+  await verifyUser(token);
 
   // Return static campaign-specific custom fields for now
   return {
@@ -89,13 +69,14 @@ export async function getCampaignCustomFields(): Promise<Record<string, string[]
 
 export async function getSettings() {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  await verifyUser(idToken);
+  const token = authHeader.split('Bearer ')[1];
+  await verifyUser(token);
 
   // Return static settings for now
   return {

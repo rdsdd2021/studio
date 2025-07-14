@@ -3,13 +3,6 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  browserLocalPersistence,
-  setPersistence,
-} from 'firebase/auth'
-import { app } from '@/lib/client-firebase' // Import client-side firebase app
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,18 +10,12 @@ import { Label } from "@/components/ui/label"
 import { LeadsFlowLogo } from '@/components/icons'
 import { useRouter } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { getAuthenticatedUser } from '@/actions/users'
-
-// For this prototype, we'll use localStorage to simulate a logged-in user session.
-function setSimulatedUserSession(user: any) {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-    }
-}
+import { useAuth } from '@/hooks/use-auth'
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = React.useState('rds2197@example.com'); // Default test user
+  const { signIn, loading } = useAuth();
+  const [email, setEmail] = React.useState('admin@example.com'); // Default test user
   const [password, setPassword] = React.useState('password');
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -38,38 +25,45 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
 
-    const auth = getAuth(app);
-
     try {
-      await setPersistence(auth, browserLocalPersistence)
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-
-      // After successful Firebase login, get our custom user data
-      const { user } = await getAuthenticatedUser(idToken);
-      
-      // Store the combined user info for client-side access
-      setSimulatedUserSession(user);
-
-      router.push(`/dashboard`);
+      await signIn(email, password);
+      router.push('/dashboard');
     } catch (error: any) {
-        console.error("Login Error:", error);
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-            setError("Invalid email or password.");
-        } else {
-            setError(error.message || "An unexpected error occurred. Please try again.");
-        }
+      console.error("Login Error:", error);
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        setError("Invalid email or password.");
+      } else if (error.message?.includes('Email not confirmed')) {
+        setError("Please check your email and confirm your account.");
+      } else {
+        setError(error.message || "An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Redirect if already authenticated
   React.useEffect(() => {
-    // Clear any previous session on login page load
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('currentUser');
+    if (!loading && window.location.pathname === '/login') {
+      // Check if we have a current user session
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        router.push('/dashboard');
+      }
     }
-  }, []);
+  }, [loading, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -121,9 +115,9 @@ export default function LoginPage() {
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>
               {isSubmitting ? 'Logging in...' : 'Login'}
             </Button>
-             <CardDescription className="text-center text-xs pt-2">
-                Log in with a user from the User Management page.
-             </CardDescription>
+            <CardDescription className="text-center text-xs pt-2">
+              Log in with a user from the User Management page.
+            </CardDescription>
           </form>
         </CardContent>
       </Card>

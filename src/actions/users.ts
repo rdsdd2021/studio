@@ -1,187 +1,204 @@
 
 'use server'
 
-import { db, auth } from '@/lib/firebase';
-import type { User, Disposition } from "@/lib/types"
+import { supabase } from '@/lib/supabase';
+import type { User } from "@/lib/types"
+import { convertDbUserToUser, convertUserToDbUser } from "@/lib/types"
+import { verifyUser } from '@/lib/auth';
 import { headers } from 'next/headers';
 
-// Verify user identity from token
-async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
-    if (!auth || !db) throw new Error("Authentication services not available.");
-    
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-
-    if (!userDoc.exists) {
-        throw new Error("User not found in database.");
-    }
-
-    const user = { id: userDoc.id, ...userDoc.data() } as User;
-
-    if (requiredRole && user.role !== requiredRole) {
-        throw new Error(`Unauthorized: User does not have the required role ('${requiredRole}').`);
-    }
-
-    if (user.status !== 'active') {
-        throw new Error("User account is not active.");
-    }
-    
-    return user;
-}
-
 export async function getUsers(): Promise<User[]> {
-  if (!db) throw new Error("Database not configured.");
-  
-  const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
-  
-  if (snapshot.empty) {
-    return [];
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch users: ${error.message}`);
   }
-  
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+
+  return users?.map(convertDbUserToUser) || [];
 }
 
 export async function getCallers(): Promise<User[]> {
-  if (!db) throw new Error("Database not configured.");
-  
-  const snapshot = await db.collection('users')
-    .where('role', '==', 'caller')
-    .where('status', '==', 'active')
-    .get();
-  
-  if (snapshot.empty) {
-    return [];
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('role', 'caller')
+    .eq('status', 'active');
+
+  if (error) {
+    throw new Error(`Failed to fetch callers: ${error.message}`);
   }
-  
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+
+  return users?.map(convertDbUserToUser) || [];
 }
 
-export async function getAuthenticatedUser(idToken: string) {
-  const user = await verifyUser(idToken);
+export async function getAuthenticatedUser(token: string) {
+  const user = await verifyUser(token);
   return { user };
 }
 
 export async function toggleUserStatus(userId: string) {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  const currentUser = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const currentUser = await verifyUser(token, 'admin');
 
-  if (!db) throw new Error("Database not configured.");
+  // Get current user data
+  const { data: userData, error: fetchError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
 
-  const userRef = db.collection('users').doc(userId);
-  const userDoc = await userRef.get();
-  
-  if (!userDoc.exists) {
+  if (fetchError || !userData) {
     throw new Error("User not found.");
   }
 
-  const userData = userDoc.data() as User;
   const newStatus = userData.status === 'active' ? 'inactive' : 'active';
   
-  await userRef.update({
-    status: newStatus,
-    updatedAt: new Date().toISOString(),
-    updatedBy: currentUser.name
-  });
+  const { data, error } = await supabase
+    .from('users')
+    .update({
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+      updated_by: currentUser.name
+    })
+    .eq('id', userId)
+    .select()
+    .single();
 
-  return { ...userData, id: userDoc.id, status: newStatus };
+  if (error) {
+    throw new Error(`Failed to toggle user status: ${error.message}`);
+  }
+
+  return convertDbUserToUser(data);
 }
 
 export async function approveUser(userId: string) {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  const currentUser = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const currentUser = await verifyUser(token, 'admin');
 
-  if (!db) throw new Error("Database not configured.");
+  const { data, error } = await supabase
+    .from('users')
+    .update({
+      status: 'active',
+      updated_at: new Date().toISOString(),
+      approved_by: currentUser.name
+    })
+    .eq('id', userId)
+    .select()
+    .single();
 
-  const userRef = db.collection('users').doc(userId);
-  const userDoc = await userRef.get();
-  
-  if (!userDoc.exists) {
-    throw new Error("User not found.");
+  if (error) {
+    throw new Error(`Failed to approve user: ${error.message}`);
   }
 
-  const userData = userDoc.data() as User;
-  
-  await userRef.update({
-    status: 'active',
-    updatedAt: new Date().toISOString(),
-    approvedBy: currentUser.name
-  });
-
-  return { ...userData, id: userDoc.id, status: 'active' as const };
+  return convertDbUserToUser(data);
 }
 
 export async function updateUser(userId: string, updates: Partial<User>) {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  const currentUser = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const currentUser = await verifyUser(token, 'admin');
 
-  if (!db) throw new Error("Database not configured.");
+  const dbUpdates = {
+    ...(updates.name && { name: updates.name }),
+    ...(updates.email && { email: updates.email }),
+    ...(updates.phone && { phone: updates.phone }),
+    ...(updates.role && { role: updates.role }),
+    ...(updates.status && { status: updates.status }),
+    ...(updates.avatar && { avatar: updates.avatar }),
+    ...(updates.loginStatus && { login_status: updates.loginStatus }),
+    updated_at: new Date().toISOString(),
+    updated_by: currentUser.name
+  };
 
-  const userRef = db.collection('users').doc(userId);
-  const userDoc = await userRef.get();
-  
-  if (!userDoc.exists) {
-    throw new Error("User not found.");
+  const { data, error } = await supabase
+    .from('users')
+    .update(dbUpdates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update user: ${error.message}`);
   }
 
-  await userRef.update({
-    ...updates,
-    updatedAt: new Date().toISOString(),
-    updatedBy: currentUser.name
-  });
-
-  const updatedDoc = await userRef.get();
-  return { id: updatedDoc.id, ...updatedDoc.data() } as User;
+  return convertDbUserToUser(data);
 }
 
 export async function addUser(newUser: Omit<User, 'id' | 'createdAt' | 'status'>) {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  const currentUser = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const currentUser = await verifyUser(token, 'admin');
 
-  if (!db || !auth) throw new Error("Database or auth not configured.");
-
-  // Create user in Firebase Auth
-  const userRecord = await auth.createUser({
+  // Create user in Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email: newUser.email,
-    password: newUser.password,
-    displayName: newUser.name,
-    phoneNumber: newUser.phone,
+    password: newUser.password!,
+    phone: newUser.phone,
+    user_metadata: {
+      name: newUser.name,
+      role: newUser.role
+    }
   });
 
-  // Create user document in Firestore
-  const userData = {
-    ...newUser,
-    createdAt: new Date().toISOString(),
+  if (authError || !authData.user) {
+    throw new Error(`Failed to create auth user: ${authError?.message || 'Unknown error'}`);
+  }
+
+  // Create user record in our users table
+  const dbUser = {
+    id: authData.user.id,
+    name: newUser.name,
+    email: newUser.email,
+    phone: newUser.phone,
+    role: newUser.role,
     status: 'pending' as const,
-    createdBy: currentUser.name
+    avatar: newUser.avatar || null,
+    login_status: null,
+    created_by: currentUser.name
   };
 
-  await db.collection('users').doc(userRecord.uid).set(userData);
+  const { data, error } = await supabase
+    .from('users')
+    .insert([dbUser])
+    .select()
+    .single();
 
-  return { id: userRecord.uid, ...userData };
+  if (error) {
+    // If user table insert fails, clean up auth user
+    await supabase.auth.admin.deleteUser(authData.user.id);
+    throw new Error(`Failed to create user record: ${error.message}`);
+  }
+
+  return convertDbUserToUser(data);
 }
 
 // Keep createUser as an alias for backward compatibility
@@ -189,16 +206,23 @@ export const createUser = addUser;
 
 export async function getLoginActivity(): Promise<any[]> {
   const headersList = await headers();
-  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  const authHeader = headersList.get('Authorization');
   
-  if (!idToken) {
+  if (!authHeader?.startsWith('Bearer ')) {
     throw new Error("No authentication token found.");
   }
 
-  await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  await verifyUser(token, 'admin');
 
-  if (!db) throw new Error("Database not configured.");
+  const { data: activity, error } = await supabase
+    .from('login_activity')
+    .select('*')
+    .order('timestamp', { ascending: false });
 
-  // Return empty array for now - this can be implemented later
-  return [];
+  if (error) {
+    throw new Error(`Failed to fetch login activity: ${error.message}`);
+  }
+
+  return activity || [];
 }

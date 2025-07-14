@@ -1,73 +1,67 @@
 
 'use server'
 
-import { db, auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import type { Lead, Assignment, Disposition, SubDisposition, User } from "@/lib/types"
+import { convertDbLeadToLead, convertDbAssignmentToAssignment, convertLeadToDbLead, convertAssignmentToDbAssignment } from "@/lib/types"
+import { verifyUser } from '@/lib/auth';
 import { headers } from 'next/headers';
 
-
-async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
-    if (!auth || !db) throw new Error("Authentication services not available.");
-    
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-
-    if (!userDoc.exists) {
-        throw new Error("User not found in database.");
-    }
-
-    const user = { id: userDoc.id, ...userDoc.data() } as User;
-
-    if (requiredRole && user.role !== requiredRole) {
-        throw new Error(`Unauthorized: User does not have the required role ('${requiredRole}').`);
-    }
-
-    if (user.status !== 'active') {
-        throw new Error("User account is not active.");
-    }
-    
-    return user;
-}
-
-
 export async function getLeads(): Promise<Lead[]> {
-  if (!db) throw new Error("Database not configured.");
-  const snapshot = await db.collection('leads').orderBy('createdAt', 'desc').get();
-  if (snapshot.empty) {
-    return [];
+  const { data: leads, error } = await supabase
+    .from('leads')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch leads: ${error.message}`);
   }
-  return snapshot.docs.map(doc => ({ refId: doc.id, ...doc.data() } as Lead));
+
+  return leads?.map(convertDbLeadToLead) || [];
 }
 
 export async function getAssignments(): Promise<Assignment[]> {
-    if (!db) throw new Error("Database not configured.");
-    const snapshot = await db.collection('assignmentHistory').orderBy('assignedTime', 'desc').get();
-    if (snapshot.empty) {
-      return [];
-    }
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Assignment));
-}
+  const { data: assignments, error } = await supabase
+    .from('assignments')
+    .select('*')
+    .order('assigned_time', { ascending: false });
 
-export async function getLeadDetails(id: string): Promise<Lead | undefined> {
-  if (!db) throw new Error("Database not configured.");
-  const doc = await db.collection('leads').doc(id).get();
-  if (!doc.exists) {
-    return undefined;
+  if (error) {
+    throw new Error(`Failed to fetch assignments: ${error.message}`);
   }
-  return { refId: doc.id, ...doc.data() } as Lead;
+
+  return assignments?.map(convertDbAssignmentToAssignment) || [];
 }
 
 export async function getAssignmentHistory(leadId: string): Promise<Assignment[]> {
-    if (!db) throw new Error("Database not configured.");
-  const snapshot = await db.collection('assignmentHistory')
-    .where('mainDataRefId', '==', leadId)
-    .orderBy('assignedTime', 'desc')
-    .get();
-    
-  if (snapshot.empty) {
-    return [];
+  const { data: assignments, error } = await supabase
+    .from('assignments')
+    .select('*')
+    .eq('lead_id', leadId)
+    .order('assigned_time', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch assignment history: ${error.message}`);
   }
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Assignment));
+
+  return assignments?.map(convertDbAssignmentToAssignment) || [];
+}
+
+export async function getLeadDetails(leadId: string): Promise<Lead | null> {
+  const { data: lead, error } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', leadId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows returned
+      return null;
+    }
+    throw new Error(`Failed to fetch lead details: ${error.message}`);
+  }
+
+  return lead ? convertDbLeadToLead(lead) : null;
 }
 
 export async function addAssignment(
@@ -78,164 +72,217 @@ export async function addAssignment(
   followUpDate?: Date,
   scheduleDate?: Date
 ): Promise<Assignment> {
-    const headersList = await headers();
-    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
-    
-    if (!idToken) {
-        throw new Error("No authentication token found.");
-    }
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error("No authentication token found.");
+  }
 
-    const user = await verifyUser(idToken);
+  const token = authHeader.split('Bearer ')[1];
+  const user = await verifyUser(token);
 
-    if (!db) throw new Error("Database not configured.");
+  const assignment: Partial<Assignment> = {
+    mainDataRefId: leadId,
+    disposition,
+    subDisposition,
+    remark,
+    followUpDate: followUpDate?.toISOString(),
+    scheduleDate: scheduleDate?.toISOString(),
+    assignedTime: new Date().toISOString(),
+    userId: user.id,
+    userName: user.name,
+  };
 
-    const assignment: Omit<Assignment, 'id'> = {
-        mainDataRefId: leadId,
-        disposition,
-        subDisposition,
-        remark,
-        followUpDate: followUpDate?.toISOString(),
-        scheduleDate: scheduleDate?.toISOString(),
-        assignedTime: new Date().toISOString(),
-        userId: user.id,
-        userName: user.name,
-    };
+  const dbAssignment = convertAssignmentToDbAssignment(assignment);
+  
+  const { data, error } = await supabase
+    .from('assignments')
+    .insert([dbAssignment])
+    .select()
+    .single();
 
-    const docRef = await db.collection('assignmentHistory').add(assignment);
-    return { id: docRef.id, ...assignment };
+  if (error) {
+    throw new Error(`Failed to add assignment: ${error.message}`);
+  }
+
+  return convertDbAssignmentToAssignment(data);
 }
 
 export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
-    const headersList = await headers();
-    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
-    
-    if (!idToken) {
-        throw new Error("No authentication token found.");
-    }
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error("No authentication token found.");
+  }
 
-    const currentUser = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const currentUser = await verifyUser(token, 'admin');
 
-    if (!db) throw new Error("Database not configured.");
+  // Get the target user's details
+  const { data: targetUser, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
 
-    // Get the target user's details
-    const targetUserDoc = await db.collection('users').doc(userId).get();
-    if (!targetUserDoc.exists) {
-        throw new Error("Target user not found.");
-    }
-    const targetUser = { id: targetUserDoc.id, ...targetUserDoc.data() } as User;
+  if (userError || !targetUser) {
+    throw new Error("Target user not found.");
+  }
 
-    const assignments: Assignment[] = [];
-    const batch = db.batch();
+  const assignments: Partial<Assignment>[] = leadIds.map(leadId => ({
+    mainDataRefId: leadId,
+    disposition: 'New',
+    subDisposition: 'Ringing',
+    remark: `Assigned by ${currentUser.name}`,
+    assignedTime: new Date().toISOString(),
+    userId: targetUser.id,
+    userName: targetUser.name,
+  }));
 
-    for (const leadId of leadIds) {
-        const assignment: Omit<Assignment, 'id'> = {
-            mainDataRefId: leadId,
-            disposition: 'New',
-            subDisposition: 'Ringing',
-            remark: `Assigned by ${currentUser.name}`,
-            assignedTime: new Date().toISOString(),
-            userId: targetUser.id,
-            userName: targetUser.name,
-        };
+  const dbAssignments = assignments.map(convertAssignmentToDbAssignment);
 
-        const docRef = db.collection('assignmentHistory').doc();
-        batch.set(docRef, assignment);
-        assignments.push({ id: docRef.id, ...assignment });
-    }
+  const { data, error } = await supabase
+    .from('assignments')
+    .insert(dbAssignments)
+    .select();
 
-    await batch.commit();
-    return assignments;
+  if (error) {
+    throw new Error(`Failed to assign leads: ${error.message}`);
+  }
+
+  return data?.map(convertDbAssignmentToAssignment) || [];
 }
 
 export async function importLeads(
   newLeads: Partial<Lead>[],
   campaign?: string
 ): Promise<{ count: number }> {
-    const headersList = await headers();
-    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
-    
-    if (!idToken) {
-        throw new Error("No authentication token found.");
-    }
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error("No authentication token found.");
+  }
 
-    const user = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const user = await verifyUser(token, 'admin');
 
-    if (!db) throw new Error("Database not configured.");
+  const leadsToInsert = newLeads.map(leadData => {
+    const lead: Partial<Lead> = {
+      ...leadData,
+      campaigns: campaign ? [campaign] : (leadData.campaigns || []),
+      createdAt: new Date().toISOString(),
+    };
+    
+    const dbLead = convertLeadToDbLead(lead);
+    return {
+      ...dbLead,
+      imported_by: user.name,
+      updated_at: new Date().toISOString(),
+      updated_by: user.name,
+    };
+  });
 
-    const batch = db.batch();
-    
-    for (const leadData of newLeads) {
-        const docRef = db.collection('leads').doc();
-        const lead: Omit<Lead, 'refId'> = {
-            ...leadData,
-            campaigns: campaign ? [campaign] : (leadData.campaigns || []),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            importedBy: user.name,
-        } as Omit<Lead, 'refId'>;
-        
-        batch.set(docRef, lead);
-    }
-    
-    await batch.commit();
-    return { count: newLeads.length };
+  const { data, error } = await supabase
+    .from('leads')
+    .insert(leadsToInsert)
+    .select();
+
+  if (error) {
+    throw new Error(`Failed to import leads: ${error.message}`);
+  }
+
+  return { count: data?.length || 0 };
 }
 
 export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
-    const headersList = await headers();
-    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
-    
-    if (!idToken) {
-        throw new Error("No authentication token found.");
-    }
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error("No authentication token found.");
+  }
 
-    const user = await verifyUser(idToken, 'admin');
+  const token = authHeader.split('Bearer ')[1];
+  const user = await verifyUser(token, 'admin');
 
-    const { FieldValue } = await import('firebase-admin/firestore');
-    
-    if (!db) throw new Error("Database not configured.");
+  // Get current campaigns for each lead and append the new one
+  const { data: leads, error: fetchError } = await supabase
+    .from('leads')
+    .select('id, campaigns')
+    .in('id', leadIds);
 
-    const batch = db.batch();
-    
-    for (const leadId of leadIds) {
-        const leadRef = db.collection('leads').doc(leadId);
-        batch.update(leadRef, {
-            campaigns: FieldValue.arrayUnion(campaign),
-            updatedAt: new Date().toISOString(),
-            updatedBy: user.name,
-        });
-    }
-    
-    await batch.commit();
-    return { count: leadIds.length };
+  if (fetchError) {
+    throw new Error(`Failed to fetch leads: ${fetchError.message}`);
+  }
+
+  const updates = leads?.map(lead => ({
+    id: lead.id,
+    campaigns: [...(lead.campaigns || []), campaign],
+    updated_at: new Date().toISOString(),
+    updated_by: user.name,
+  })) || [];
+
+  const { error: updateError } = await supabase
+    .from('leads')
+    .upsert(updates);
+
+  if (updateError) {
+    throw new Error(`Failed to add campaign to leads: ${updateError.message}`);
+  }
+
+  return { count: leadIds.length };
 }
 
 export async function updateLeadCustomField(leadId: string, fieldName: string, value: string): Promise<Lead> {
-    const headersList = await headers();
-    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
-    
-    if (!idToken) {
-        throw new Error("No authentication token found.");
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ') ) {
+    throw new Error("No authentication token found.");
+  }
+
+  const token = authHeader.split('Bearer ')[1];
+  const user = await verifyUser(token);
+  
+  // Get the current lead
+  const { data: currentLead, error: fetchError } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', leadId)
+    .single();
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch lead: ${fetchError.message}`);
+  }
+
+  const currentCustomFields = (currentLead.custom_fields as Record<string, any>) || {};
+  
+  const updatedCustomFields = {
+    ...currentCustomFields,
+    [fieldName]: {
+      value,
+      updatedBy: user.name,
+      updatedAt: new Date().toISOString()
     }
+  };
 
-    const user = await verifyUser(idToken);
-    
-    if (!db) throw new Error("Database not configured.");
+  const { data, error } = await supabase
+    .from('leads')
+    .update({
+      custom_fields: updatedCustomFields,
+      updated_at: new Date().toISOString(),
+      updated_by: user.name,
+    })
+    .eq('id', leadId)
+    .select()
+    .single();
 
-    const leadRef = db.collection('leads').doc(leadId);
-    const updateData = {
-        [`customFields.${fieldName}`]: {
-            value,
-            updatedBy: user.name,
-            updatedAt: new Date().toISOString()
-        },
-        updatedAt: new Date().toISOString(),
-        updatedBy: user.name,
-    };
-    
-    await leadRef.update(updateData);
-    
-    // Return the updated lead
-    const updatedDoc = await leadRef.get();
-    return { refId: updatedDoc.id, ...updatedDoc.data() } as Lead;
+  if (error) {
+    throw new Error(`Failed to update lead custom field: ${error.message}`);
+  }
+
+  return convertDbLeadToLead(data);
 }
