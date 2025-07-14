@@ -4,6 +4,9 @@ import type { Lead, Assignment, User } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from '@/components/leads/columns';
 
+// Prevent prerendering to avoid database calls during build
+export const dynamic = 'force-dynamic';
+
 export default async function LeadsPage() {
   const [allLeads, allAssignments, allUsers] = await Promise.all([
     getLeads(),
