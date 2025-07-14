@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal, CheckCircle, XCircle, Hourglass } from 'lucide-react'
+import { MoreHorizontal, CheckCircle, XCircle, Hourglass, ShieldAlert } from 'lucide-react'
 import type { User } from '@/lib/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -28,9 +28,12 @@ const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) 
   const { toast } = useToast();
   const router = useRouter();
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || currentUser.role !== 'admin' || user.id === currentUser.id) {
+    // Admins can't edit themselves
     return null;
   }
+  
+  const isMasterAdmin = user.email === 'ramanuj@dreamdesk.in';
 
   const handleToggle = async () => {
     try {
@@ -40,10 +43,10 @@ const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) 
         description: `${user.name} has been successfully ${user.status === 'active' ? 'deactivated' : 'activated'}.`,
       });
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Update Failed',
-        description: 'Could not update user status. Please try again.',
+        description: error.message || 'Could not update user status.',
         variant: 'destructive',
       });
     }
@@ -57,10 +60,10 @@ const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) 
         description: `${user.name} has been approved and is now active.`,
       });
        router.refresh()
-    } catch (error) {
+    } catch (error: any) {
        toast({
         title: 'Approval Failed',
-        description: 'Could not approve user. Please try again.',
+        description: error.message || 'Could not approve user.',
         variant: 'destructive',
       });
     }
@@ -76,7 +79,7 @@ const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) 
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
+          <Button variant="ghost" className="h-8 w-8 p-0" disabled={isMasterAdmin}>
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -140,6 +143,7 @@ export const columns: ColumnDef<User>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
+        disabled={row.original.email === 'ramanuj@dreamdesk.in'}
       />
     ),
     enableSorting: false,
@@ -152,6 +156,8 @@ export const columns: ColumnDef<User>[] = [
         const user = row.original;
         const nameFallback = user.name.split(' ').map(n => n[0]).join('');
         const isOnline = user.loginStatus === 'online';
+        const isMasterAdmin = user.email === 'ramanuj@dreamdesk.in';
+
         return (
             <div className="flex items-center gap-3">
                 <div className="relative">
@@ -168,7 +174,10 @@ export const columns: ColumnDef<User>[] = [
                     />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-medium">{user.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">{user.name}</span>
+                    {isMasterAdmin && <ShieldAlert className="h-4 w-4 text-amber-500" title="Master Admin"/>}
+                  </div>
                   <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
             </div>

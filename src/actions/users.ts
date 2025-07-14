@@ -5,16 +5,31 @@ import { db } from '@/lib/firebase';
 import type { User, LoginActivity } from "@/lib/types"
 import { revalidatePath } from "next/cache"
 
+const MASTER_ADMIN: User = {
+    id: 'master-admin-001',
+    name: 'rds2197',
+    email: 'ramanuj@dreamdesk.in',
+    phone: '0000000000',
+    role: 'admin',
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    avatar: `https://placehold.co/32x32.png`,
+    password: 'Passw0rd'
+};
+
 export async function getUsers(): Promise<User[]> {
     if (!db) {
         console.warn('DB not configured, returning empty list for users.');
-        return [];
+        return [MASTER_ADMIN];
     }
     const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
     if (snapshot.empty) {
-        return [];
+        return [MASTER_ADMIN];
     }
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    const dbUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    // Ensure master admin isn't duplicated if it somehow gets into the DB
+    const filteredUsers = dbUsers.filter(user => user.email !== MASTER_ADMIN.email);
+    return [MASTER_ADMIN, ...filteredUsers];
 }
 
 export async function getLoginActivity(): Promise<LoginActivity[]> {
@@ -30,6 +45,7 @@ export async function getLoginActivity(): Promise<LoginActivity[]> {
 }
 
 async function verifyAdmin(adminUserId: string) {
+    if (adminUserId === MASTER_ADMIN.id) return;
     if (!db) throw new Error("Database not configured.");
     const adminUserDoc = await db.collection('users').doc(adminUserId).get();
     if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
@@ -38,6 +54,9 @@ async function verifyAdmin(adminUserId: string) {
 }
 
 export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>, adminUserId: string): Promise<User> {
+  if (userId === MASTER_ADMIN.id) {
+    throw new Error("The master admin user cannot be edited.");
+  }
   if (!db) throw new Error("Database not configured.");
   await verifyAdmin(adminUserId);
   const userRef = db.collection('users').doc(userId);
@@ -66,6 +85,9 @@ export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | '
 }
 
 export async function toggleUserStatus(userId: string, adminUserId: string): Promise<User> {
+    if (userId === MASTER_ADMIN.id) {
+        throw new Error("The master admin status cannot be changed.");
+    }
     if (!db) throw new Error("Database not configured.");
     await verifyAdmin(adminUserId);
     const userRef = db.collection('users').doc(userId);
@@ -104,7 +126,16 @@ export async function approveUser(userId: string, adminUserId: string): Promise<
 
 // This is a simulated login for the prototype.
 // In a real app, use Firebase Auth for secure authentication.
-export async function attemptLogin(email: string): Promise<{ success: boolean; message: string; user?: User }> {
+export async function attemptLogin(email: string, password?: string): Promise<{ success: boolean; message: string; user?: User }> {
+    // Check for Master Admin credentials first
+    if (email.toLowerCase() === MASTER_ADMIN.email) {
+        if (password === MASTER_ADMIN.password) {
+            return { success: true, message: "Master Admin login successful!", user: MASTER_ADMIN };
+        } else {
+            return { success: false, message: "Invalid password for Master Admin." };
+        }
+    }
+
     if (!db) {
         return { success: false, message: "Database not configured. Cannot log in." };
     }
@@ -119,14 +150,17 @@ export async function attemptLogin(email: string): Promise<{ success: boolean; m
     const userDoc = snapshot.docs[0];
     const user = { id: userDoc.id, ...userDoc.data() } as User;
     
+    // In a real app, you would verify a password hash. Here we do a plain text check.
+    if (user.password !== password) {
+        return { success: false, message: "Invalid email or password." };
+    }
+
     switch(user.status) {
         case 'pending':
             return { success: false, message: "Your account is awaiting admin approval. Please check back later." };
         case 'inactive':
             return { success: false, message: "Your account has been deactivated. Please contact an administrator." };
         case 'active':
-            // In a real app, you would verify a password hash and return a session token.
-            // For now, we return the user object on success.
             return { success: true, message: "Login successful!", user: user };
         default:
             return { success: false, message: "An unknown error occurred. Please try again." };

@@ -22,8 +22,8 @@ function setSimulatedUserSession(userId: string) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = React.useState('admin@leadsflow.com');
-  const [password, setPassword] = React.useState('password123'); // Password is not checked in this prototype
+  const [email, setEmail] = React.useState('ramanuj@dreamdesk.in');
+  const [password, setPassword] = React.useState('Passw0rd');
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -32,7 +32,7 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
 
-    const result = await attemptLogin(email);
+    const result = await attemptLogin(email, password);
 
     if (result.success && result.user) {
         setSimulatedUserSession(result.user.id);
@@ -95,7 +95,7 @@ export default function LoginPage() {
               {isSubmitting ? 'Logging in...' : 'Login'}
             </Button>
              <CardDescription className="text-center text-xs pt-2">
-                Log in with a user from the User Management page.
+                Log in with a user from the User Management page or the Master Admin account.
              </CardDescription>
           </form>
         </CardContent>
