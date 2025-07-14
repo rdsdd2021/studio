@@ -221,7 +221,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 <CardDescription>Log the outcome of your call.</CardDescription>
               </CardHeader>
               <CardContent>
-                <UpdateDispositionForm leadId={lead.refId} history={history} myLeads={myLeads} />
+                <UpdateDispositionForm leadId={lead.refId} history={history} myLeads={[]} />
               </CardContent>
             </Card>
           )}

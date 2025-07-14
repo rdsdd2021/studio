@@ -1,8 +1,8 @@
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 
 const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG;
-let app;
+let app: FirebaseApp | undefined;
 
 if (firebaseConfig) {
   if (!getApps().length) {
@@ -13,6 +13,5 @@ if (firebaseConfig) {
 } else {
     console.warn("Client-side Firebase config not found. Firebase features on the client will not work.");
 }
-
 
 export { app };

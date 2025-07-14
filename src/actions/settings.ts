@@ -2,138 +2,124 @@
 'use server'
 
 import { db, auth } from '@/lib/firebase';
-import type { Disposition, SubDisposition, User } from '@/lib/types';
+import type { User } from "@/lib/types"
 import { headers } from 'next/headers';
 
-export interface GeofenceSettings {
-    centerLocation: string;
-    radius: number;
-}
-
-async function verifyAdmin(): Promise<User> {
+async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
     if (!auth || !db) throw new Error("Authentication services not available.");
     
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) throw new Error("Authentication required.");
-
     const decodedToken = await auth.verifyIdToken(idToken);
     const userDoc = await db.collection('users').doc(decodedToken.uid).get();
 
     if (!userDoc.exists) {
         throw new Error("User not found in database.");
     }
+
     const user = { id: userDoc.id, ...userDoc.data() } as User;
-    if (user.role !== 'admin') {
-        throw new Error("Unauthorized: User is not an admin.");
+
+    if (requiredRole && user.role !== requiredRole) {
+        throw new Error(`Unauthorized: User does not have the required role ('${requiredRole}').`);
     }
+
+    if (user.status !== 'active') {
+        throw new Error("User account is not active.");
+    }
+    
     return user;
 }
 
-
-async function getSettingsDoc(key: string) {
-    if (!db) return null;
-    const docRef = db.collection('settings').doc(key);
-    const doc = await docRef.get();
-    return doc;
-}
-
-async function saveSettingsDoc(key: string, value: any) {
-    if (!db || !auth) { throw new Error("Database not configured."); }
-    await verifyAdmin();
-    const docRef = db.collection('settings').doc(key);
-    await docRef.set({ value });
-}
-
-export async function getGeofenceSettings(): Promise<GeofenceSettings> {
-    const doc = await getSettingsDoc('geofence');
-    if (doc?.exists) {
-        return doc.data()?.value as GeofenceSettings;
-    }
-    return { centerLocation: 'Connaught Place, New Delhi', radius: 5000 };
-}
-
-export async function saveGeofenceSettings(settings: GeofenceSettings): Promise<void> {
-    await saveSettingsDoc('geofence', settings);
-}
-
 export async function getUniversalCustomFields(): Promise<string[]> {
-    const doc = await getSettingsDoc('universalCustomFields');
-    if (doc?.exists) {
-        return doc.data()?.value || [];
-    }
-    return ['Source', 'Previous Course'];
-}
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
 
-export async function saveUniversalCustomFields(fields: string[]): Promise<void> {
-    await saveSettingsDoc('universalCustomFields', fields);
-}
+  await verifyUser(idToken);
 
+  // Return static custom fields for now
+  return [
+    'Emergency Contact',
+    'Age',
+    'Experience Level',
+    'Interests',
+    'Source',
+    'Budget Range',
+    'Preferred Time',
+    'Special Requirements'
+  ];
+}
 
 export async function getCampaignCustomFields(): Promise<Record<string, string[]>> {
-    const doc = await getSettingsDoc('campaignCustomFields');
-    if (doc?.exists) {
-        return doc.data()?.value || {};
-    }
-    return {
-        'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
-        'Diwali Dhamaka': ["Reference ID"],
-    };
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
+
+  await verifyUser(idToken);
+
+  // Return static campaign-specific custom fields for now
+  return {
+    'Summer Fest 2024': [
+      'Activity Preference',
+      'Previous Participation',
+      'Team Size',
+      'Skill Level',
+      'Equipment Needed'
+    ],
+    'Diwali Dhamaka': [
+      'Performance Type',
+      'Group Size',
+      'Duration Preference',
+      'Previous Experience',
+      'Cultural Background'
+    ],
+    'New Year Special': [
+      'Resolution Goals',
+      'Commitment Level',
+      'Start Date',
+      'Package Preference',
+      'Referral Source'
+    ]
+  };
 }
 
-export async function saveCampaignCustomFields(fields: Record<string, string[]>): Promise<void> {
-    await saveSettingsDoc('campaignCustomFields', fields);
+export async function getSettings() {
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
+
+  await verifyUser(idToken);
+
+  // Return static settings for now
+  return {
+    dispositions: ['New', 'Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'],
+    subDispositions: ['Initial', 'Hot Lead', 'Warm Lead', 'Cold Lead', 'Converted', 'Not Qualified'],
+    campaigns: ['Summer Fest 2024', 'Diwali Dhamaka', 'New Year Special'],
+    customFields: await getUniversalCustomFields(),
+    campaignCustomFields: await getCampaignCustomFields()
+  };
 }
 
-export async function getGlobalDispositions(): Promise<Disposition[]> {
-    const doc = await getSettingsDoc('globalDispositions');
-    if (doc?.exists) {
-        return doc.data()?.value || [];
-    }
-    return ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
+// Static disposition and sub-disposition mappings for campaigns
+export async function getCampaignDispositions(): Promise<Record<string, string[]>> {
+  return {
+    'Summer Fest 2024': ['Interested', 'Follow-up', 'Callback', 'Not Interested'],
+    'Diwali Dhamaka': ['Interested', 'Not Interested', 'Callback', 'Not Reachable'],
+    'New Year Special': ['Interested', 'Follow-up', 'Not Interested', 'Callback']
+  };
 }
 
-export async function saveGlobalDispositions(dispositions: Disposition[]): Promise<void> {
-    await saveSettingsDoc('globalDispositions', dispositions);
-}
-
-export async function getGlobalSubDispositions(): Promise<SubDisposition[]> {
-    const doc = await getSettingsDoc('globalSubDispositions');
-    if (doc?.exists) {
-        return doc.data()?.value || [];
-    }
-    return ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
-}
-
-export async function saveGlobalSubDispositions(subDispositions: SubDisposition[]): Promise<void> {
-    await saveSettingsDoc('globalSubDispositions', subDispositions);
-}
-
-export async function getCampaignDispositions(): Promise<Record<string, Disposition[]>> {
-    const doc = await getSettingsDoc('campaignDispositions');
-    if (doc?.exists) {
-        return doc.data()?.value || {};
-    }
-    return {
-        'Summer Fest 2024': ['Interested', 'Follow-up', 'Callback', 'Application Started'],
-        'Diwali Dhamaka': ['Interested', 'Not Interested', 'Callback', 'Wrong Number'],
-    };
-}
-
-export async function saveCampaignDispositions(dispositions: Record<string, Disposition[]>): Promise<void> {
-    await saveSettingsDoc('campaignDispositions', dispositions);
-}
-
-export async function getCampaignSubDispositions(): Promise<Record<string, SubDisposition[]>> {
-    const doc = await getSettingsDoc('campaignSubDispositions');
-    if (doc?.exists) {
-        return doc.data()?.value || {};
-    }
-    return {
-        'Summer Fest 2024': ['Paid', 'Trial Class Booked', 'Sent Brochure'],
-        'Diwali Dhamaka': ['Call Back Tomorrow', 'Price Issue'],
-    };
-}
-
-export async function saveCampaignSubDispositions(subDispositions: Record<string, SubDisposition[]>): Promise<void> {
-    await saveSettingsDoc('campaignSubDispositions', subDispositions);
+export async function getCampaignSubDispositions(): Promise<Record<string, string[]>> {
+  return {
+    'Summer Fest 2024': ['Hot Lead', 'Warm Lead', 'Cold Lead'],
+    'Diwali Dhamaka': ['Initial', 'Follow-up Required', 'Decision Pending'],
+    'New Year Special': ['Qualified', 'Needs More Info', 'Price Sensitive']
+  };
 }

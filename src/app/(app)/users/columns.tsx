@@ -37,7 +37,7 @@ const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) 
 
   const handleToggle = async () => {
     try {
-      await toggleUserStatus(user.id, currentUser.id);
+      await toggleUserStatus(user.id);
       toast({
         title: `User ${user.status === 'active' ? 'Deactivated' : 'Activated'}`,
         description: `${user.name} has been successfully ${user.status === 'active' ? 'deactivated' : 'activated'}.`,
@@ -54,7 +54,7 @@ const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) 
 
   const handleApprove = async () => {
     try {
-      await approveUser(user.id, currentUser.id);
+      await approveUser(user.id);
        toast({
         title: "User Approved",
         description: `${user.name} has been approved and is now active.`,

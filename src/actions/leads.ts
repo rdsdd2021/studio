@@ -78,144 +78,164 @@ export async function addAssignment(
   followUpDate?: Date,
   scheduleDate?: Date
 ): Promise<Assignment> {
-    if (!db || !auth) throw new Error("Database not configured.");
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) throw new Error("Authentication required.");
+    const headersList = await headers();
+    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+    
+    if (!idToken) {
+        throw new Error("No authentication token found.");
+    }
 
-    const user = await verifyUser(idToken, 'caller');
+    const user = await verifyUser(idToken);
 
-    const now = new Date();
-    const newAssignmentData = {
+    if (!db) throw new Error("Database not configured.");
+
+    const assignment: Omit<Assignment, 'id'> = {
         mainDataRefId: leadId,
-        userId: user.id,
-        userName: user.name,
-        assignedTime: now.toISOString(),
         disposition,
-        dispositionTime: now.toISOString(),
         subDisposition,
-        subDispositionTime: now.toISOString(),
         remark,
         followUpDate: followUpDate?.toISOString(),
         scheduleDate: scheduleDate?.toISOString(),
+        assignedTime: new Date().toISOString(),
+        userId: user.id,
+        userName: user.name,
     };
-    
-    const docRef = await db.collection('assignmentHistory').add(newAssignmentData);
-    
-    return { id: docRef.id, ...newAssignmentData } as Assignment;
+
+    const docRef = await db.collection('assignmentHistory').add(assignment);
+    return { id: docRef.id, ...assignment };
 }
 
 export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
-    if (!db || !auth) throw new Error("Database not configured.");
-
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) throw new Error("Authentication required.");
-    await verifyUser(idToken, 'admin');
-
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-        throw new Error("User to assign to not found");
-    }
-    const userToAssign = userDoc.data();
-    if (userToAssign?.role !== 'caller') {
-        throw new Error("Leads can only be assigned to callers.");
+    const headersList = await headers();
+    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+    
+    if (!idToken) {
+        throw new Error("No authentication token found.");
     }
 
-    const now = new Date();
-    const newAssignments: Assignment[] = [];
+    const currentUser = await verifyUser(idToken, 'admin');
 
+    if (!db) throw new Error("Database not configured.");
+
+    // Get the target user's details
+    const targetUserDoc = await db.collection('users').doc(userId).get();
+    if (!targetUserDoc.exists) {
+        throw new Error("Target user not found.");
+    }
+    const targetUser = { id: targetUserDoc.id, ...targetUserDoc.data() } as User;
+
+    const assignments: Assignment[] = [];
     const batch = db.batch();
 
     for (const leadId of leadIds) {
-        const newAssignmentData = {
+        const assignment: Omit<Assignment, 'id'> = {
             mainDataRefId: leadId,
-            userId: userId,
-            userName: userToAssign?.name,
-            assignedTime: now.toISOString(),
-            disposition: 'New' as Disposition,
+            disposition: 'New',
+            subDisposition: 'Ringing',
+            remark: `Assigned by ${currentUser.name}`,
+            assignedTime: new Date().toISOString(),
+            userId: targetUser.id,
+            userName: targetUser.name,
         };
-        const docRef = db.collection('assignmentHistory').doc(); // Create a new doc reference
-        batch.set(docRef, newAssignmentData);
-        newAssignments.push({ id: docRef.id, ...newAssignmentData } as Assignment);
+
+        const docRef = db.collection('assignmentHistory').doc();
+        batch.set(docRef, assignment);
+        assignments.push({ id: docRef.id, ...assignment });
     }
-    
+
     await batch.commit();
-    return newAssignments;
+    return assignments;
 }
 
 export async function importLeads(
   newLeads: Partial<Lead>[],
   campaign?: string
 ): Promise<{ count: number }> {
-    if (!db || !auth) throw new Error("Database not configured.");
+    const headersList = await headers();
+    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
     
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) throw new Error("Authentication required.");
-    await verifyUser(idToken, 'admin');
+    if (!idToken) {
+        throw new Error("No authentication token found.");
+    }
 
-    const now = new Date().toISOString();
+    const user = await verifyUser(idToken, 'admin');
+
+    if (!db) throw new Error("Database not configured.");
+
     const batch = db.batch();
     
-    newLeads.forEach((leadData) => {
+    for (const leadData of newLeads) {
         const docRef = db.collection('leads').doc();
-        const newLead: Omit<Lead, 'refId'> = {
-            name: leadData.name || 'N/A',
-            phone: leadData.phone || 'N/A',
-            gender: leadData.gender || 'Other',
-            school: leadData.school || 'N/A',
-            locality: leadData.locality || 'N/A',
-            district: leadData.district || 'N/A',
-            createdAt: now,
-            campaigns: campaign ? [campaign] : leadData.campaigns || [],
-            customFields: leadData.customFields || {},
-        };
-        batch.set(docRef, newLead);
-    });
+        const lead: Omit<Lead, 'refId'> = {
+            ...leadData,
+            campaigns: campaign ? [campaign] : (leadData.campaigns || []),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            importedBy: user.name,
+        } as Omit<Lead, 'refId'>;
+        
+        batch.set(docRef, lead);
+    }
     
     await batch.commit();
     return { count: newLeads.length };
 }
 
-
 export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
-    if (!db || !auth) throw new Error("Database not configured.");
+    const headersList = await headers();
+    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+    
+    if (!idToken) {
+        throw new Error("No authentication token found.");
+    }
 
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) throw new Error("Authentication required.");
-    await verifyUser(idToken, 'admin');
+    const user = await verifyUser(idToken, 'admin');
 
-    const { firestore } = await import('firebase-admin/firestore');
+    const { FieldValue } = await import('firebase-admin/firestore');
+    
+    if (!db) throw new Error("Database not configured.");
+
     const batch = db.batch();
     
     for (const leadId of leadIds) {
         const leadRef = db.collection('leads').doc(leadId);
         batch.update(leadRef, {
-            campaigns: firestore.FieldValue.arrayUnion(campaign)
+            campaigns: FieldValue.arrayUnion(campaign),
+            updatedAt: new Date().toISOString(),
+            updatedBy: user.name,
         });
     }
-
+    
     await batch.commit();
     return { count: leadIds.length };
 }
 
 export async function updateLeadCustomField(leadId: string, fieldName: string, value: string): Promise<Lead> {
-    if (!db || !auth) throw new Error("Database not configured.");
+    const headersList = await headers();
+    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
     
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) throw new Error("Authentication required.");
-    const user = await verifyUser(idToken, 'caller');
+    if (!idToken) {
+        throw new Error("No authentication token found.");
+    }
+
+    const user = await verifyUser(idToken);
+    
+    if (!db) throw new Error("Database not configured.");
 
     const leadRef = db.collection('leads').doc(leadId);
-
-    const fieldData = {
-        value,
+    const updateData = {
+        [`customFields.${fieldName}`]: {
+            value,
+            updatedBy: user.name,
+            updatedAt: new Date().toISOString()
+        },
+        updatedAt: new Date().toISOString(),
         updatedBy: user.name,
-        updatedAt: new Date().toISOString()
     };
     
-    await leadRef.update({
-        [`customFields.${fieldName}`]: fieldData
-    });
-
+    await leadRef.update(updateData);
+    
+    // Return the updated lead
     const updatedDoc = await leadRef.get();
     return { refId: updatedDoc.id, ...updatedDoc.data() } as Lead;
 }

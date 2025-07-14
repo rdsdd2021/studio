@@ -38,15 +38,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
-const dispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
-const subDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
+const dispositions = ['New', 'Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'] as const;
+const subDispositions = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'] as const;
 
 const FormSchema = z.object({
   disposition: z.enum(dispositions, { required_error: 'Please select a disposition.' }),
   subDisposition: z.enum(subDispositions, { required_error: 'Please select a sub-disposition.' }),
-  remark: z.string().min(10, {
-    message: "Remark must be at least 10 characters.",
-  }),
+  remark: z.string().min(1, { message: 'Remark is required.' }),
   followUpDate: z.date().optional(),
   scheduleDate: z.date().optional(),
   nextLead: z.boolean().default(true),
@@ -132,9 +130,9 @@ export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispos
     setIsSubmitting(true);
     try {
       await addAssignment(
-        leadId, 
-        data.disposition, 
-        data.subDisposition, 
+        leadId,
+        data.disposition as Disposition,
+        data.subDisposition as SubDisposition,
         data.remark,
         data.followUpDate,
         data.scheduleDate

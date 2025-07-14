@@ -2,10 +2,10 @@
 'use server'
 
 import { db, auth } from '@/lib/firebase';
-import type { User, LoginActivity } from "@/lib/types"
-import { revalidatePath } from "next/cache"
+import type { User, Disposition } from "@/lib/types"
 import { headers } from 'next/headers';
 
+// Verify user identity from token
 async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
     if (!auth || !db) throw new Error("Authentication services not available.");
     
@@ -29,143 +29,176 @@ async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): P
     return user;
 }
 
-async function getVerifiedAdmin(idToken: string): Promise<User> {
-    return verifyUser(idToken, 'admin');
-}
-
 export async function getUsers(): Promise<User[]> {
-    if (!db) throw new Error("Database not configured.");
-    const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
-    if (snapshot.empty) {
-        return [];
-    }
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-}
-
-export async function getLoginActivity(): Promise<LoginActivity[]> {
-    if (!db) throw new Error("Database not configured.");
-    const snapshot = await db.collection('loginActivity').orderBy('timestamp', 'desc').get();
-    if (snapshot.empty) {
-        return [];
-    }
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LoginActivity));
-}
-
-
-export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
-  const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-  if (!idToken || !db || !auth) throw new Error("Authentication required.");
+  if (!db) throw new Error("Database not configured.");
   
-  const adminUser = await getVerifiedAdmin(idToken);
+  const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
   
-  if (userId === adminUser.id) {
-    throw new Error("Admins cannot edit their own roles or status via this function.");
+  if (snapshot.empty) {
+    return [];
   }
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+}
+
+export async function getCallers(): Promise<User[]> {
+  if (!db) throw new Error("Database not configured.");
+  
+  const snapshot = await db.collection('users')
+    .where('role', '==', 'caller')
+    .where('status', '==', 'active')
+    .get();
+  
+  if (snapshot.empty) {
+    return [];
+  }
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+}
+
+export async function getAuthenticatedUser(idToken: string) {
+  const user = await verifyUser(idToken);
+  return { user };
+}
+
+export async function toggleUserStatus(userId: string) {
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
+
+  const currentUser = await verifyUser(idToken, 'admin');
+
+  if (!db) throw new Error("Database not configured.");
 
   const userRef = db.collection('users').doc(userId);
-  await userRef.update({ ...data });
-
-  if (data.role) {
-    await auth.setCustomUserClaims(userId, { role: data.role });
-  }
+  const userDoc = await userRef.get();
   
-  revalidatePath('/users');
+  if (!userDoc.exists) {
+    throw new Error("User not found.");
+  }
+
+  const userData = userDoc.data() as User;
+  const newStatus = userData.status === 'active' ? 'inactive' : 'active';
+  
+  await userRef.update({
+    status: newStatus,
+    updatedAt: new Date().toISOString(),
+    updatedBy: currentUser.name
+  });
+
+  return { ...userData, id: userDoc.id, status: newStatus };
+}
+
+export async function approveUser(userId: string) {
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
+
+  const currentUser = await verifyUser(idToken, 'admin');
+
+  if (!db) throw new Error("Database not configured.");
+
+  const userRef = db.collection('users').doc(userId);
+  const userDoc = await userRef.get();
+  
+  if (!userDoc.exists) {
+    throw new Error("User not found.");
+  }
+
+  const userData = userDoc.data() as User;
+  
+  await userRef.update({
+    status: 'active',
+    updatedAt: new Date().toISOString(),
+    approvedBy: currentUser.name
+  });
+
+  return { ...userData, id: userDoc.id, status: 'active' as const };
+}
+
+export async function updateUser(userId: string, updates: Partial<User>) {
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
+
+  const currentUser = await verifyUser(idToken, 'admin');
+
+  if (!db) throw new Error("Database not configured.");
+
+  const userRef = db.collection('users').doc(userId);
+  const userDoc = await userRef.get();
+  
+  if (!userDoc.exists) {
+    throw new Error("User not found.");
+  }
+
+  await userRef.update({
+    ...updates,
+    updatedAt: new Date().toISOString(),
+    updatedBy: currentUser.name
+  });
+
   const updatedDoc = await userRef.get();
   return { id: updatedDoc.id, ...updatedDoc.data() } as User;
 }
 
-export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status' | 'password'> & {password: string}): Promise<User> {
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken || !db || !auth) throw new Error("Authentication required.");
-    await getVerifiedAdmin(idToken);
-    
-    const userRecord = await auth.createUser({
-        email: data.email,
-        password: data.password,
-        displayName: data.name,
-        disabled: true, // User starts as 'pending', so disable auth until approved.
-    });
-
-    await auth.setCustomUserClaims(userRecord.uid, { role: data.role });
-
-    const newUser: Omit<User, 'id' | 'avatar'> = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        role: data.role,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-    };
+export async function addUser(newUser: Omit<User, 'id' | 'createdAt' | 'status'>) {
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
   
-    await db.collection('users').doc(userRecord.uid).set(newUser);
-    
-    revalidatePath('/users');
-    return { id: userRecord.uid, ...newUser, avatar: '' };
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
+
+  const currentUser = await verifyUser(idToken, 'admin');
+
+  if (!db || !auth) throw new Error("Database or auth not configured.");
+
+  // Create user in Firebase Auth
+  const userRecord = await auth.createUser({
+    email: newUser.email,
+    password: newUser.password,
+    displayName: newUser.name,
+    phoneNumber: newUser.phone,
+  });
+
+  // Create user document in Firestore
+  const userData = {
+    ...newUser,
+    createdAt: new Date().toISOString(),
+    status: 'pending' as const,
+    createdBy: currentUser.name
+  };
+
+  await db.collection('users').doc(userRecord.uid).set(userData);
+
+  return { id: userRecord.uid, ...userData };
 }
 
-export async function toggleUserStatus(userId: string): Promise<User> {
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken || !db || !auth) throw new Error("Authentication required.");
+// Keep createUser as an alias for backward compatibility
+export const createUser = addUser;
 
-    const adminUser = await getVerifiedAdmin(idToken);
-    if (userId === adminUser.id) {
-      throw new Error("Admins cannot change their own status.");
-    }
+export async function getLoginActivity(): Promise<any[]> {
+  const headersList = await headers();
+  const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
+  
+  if (!idToken) {
+    throw new Error("No authentication token found.");
+  }
 
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-        throw new Error("User not found");
-    }
-    const currentStatus = userDoc.data()?.status;
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    
-    await userRef.update({ status: newStatus });
-    await auth.updateUser(userId, { disabled: newStatus !== 'active' });
+  await verifyUser(idToken, 'admin');
 
-    revalidatePath('/users');
-    const updatedDoc = await userRef.get();
-    return { id: updatedDoc.id, ...updatedDoc.data() } as User;
-}
+  if (!db) throw new Error("Database not configured.");
 
-export async function approveUser(userId: string): Promise<User> {
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
-    if (!idToken || !db || !auth) throw new Error("Authentication required.");
-    await getVerifiedAdmin(idToken);
-    
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-        throw new Error("User not found");
-    }
-
-    if (userDoc.data()?.status === 'pending') {
-        await userRef.update({ status: 'active' });
-        await auth.updateUser(userId, { disabled: false });
-    }
-
-    revalidatePath('/users');
-    const updatedDoc = await userRef.get();
-    return { id: updatedDoc.id, ...updatedDoc.data() } as User;
-}
-
-// This action is called by the client after a successful Firebase Auth login
-// to get the user's custom data (like role and status) from Firestore.
-export async function getAuthenticatedUser(idToken: string): Promise<{user: User}> {
-    if (!auth || !db) throw new Error("Authentication services not available.");
-    
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-
-    if (!userDoc.exists) {
-        throw new Error("User profile not found in database.");
-    }
-    
-    const user = { id: userDoc.id, ...userDoc.data() } as User;
-    
-    if (user.status !== 'active') {
-        throw new Error(`Your account is currently ${user.status}. Please contact an administrator.`);
-    }
-
-    return { user };
+  // Return empty array for now - this can be implemented later
+  return [];
 }
