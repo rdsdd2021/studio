@@ -24,10 +24,8 @@ export default function LoginPage() {
     // This is a mock authentication check.
     // In a real app, you would make an API call to your backend.
     
-    // Simple mock logic: derive user name from email. 
-    // e.g., 'jane.doe@leadsflow.com' -> 'Jane Doe'
-    const nameFromEmail = email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    const user = users.find(u => u.name === nameFromEmail);
+    // Find the user by email
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
         setError("Invalid email or password.");
@@ -104,7 +102,7 @@ export default function LoginPage() {
               Login
             </Button>
              <CardDescription className="text-center text-xs pt-2">
-                Use `admin@leadsflow.com` or `jane.doe@leadsflow.com` or `john.smith@leadsflow.com` (pw: `password123`)
+                Use `admin@leadsflow.com`, `jane.doe@leadsflow.com`, or `john.smith@leadsflow.com` (pw: `password123`)
              </CardDescription>
           </form>
         </CardContent>

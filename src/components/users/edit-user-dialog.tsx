@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  email: z.string().email({ message: 'Please enter a valid email.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
   status: z.enum(['pending', 'active', 'inactive']),
@@ -62,6 +63,7 @@ export function EditUserDialog({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       name: user.name,
+      email: user.email,
       phone: user.phone,
       role: user.role,
       status: user.status,
@@ -72,6 +74,7 @@ export function EditUserDialog({
     if (user) {
       form.reset({
         name: user.name,
+        email: user.email,
         phone: user.phone,
         role: user.role,
         status: user.status,
@@ -120,6 +123,19 @@ export function EditUserDialog({
                     <FormLabel>Name</FormLabel>
                     <FormControl>
                       <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="john.doe@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

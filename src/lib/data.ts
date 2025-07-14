@@ -4,11 +4,11 @@ import type { User, Lead, Assignment, LoginActivity, Disposition } from './types
 // In a real-world scenario, this data would come from a database.
 
 export const users: User[] = [
-    { id: 'usr_1', name: 'Admin User', phone: '1112223331', role: 'admin', status: 'active', createdAt: new Date('2023-10-01T10:00:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=AU' },
-    { id: 'usr_2', name: 'Jane Doe', phone: '1112223332', role: 'caller', status: 'active', createdAt: new Date('2023-10-05T11:30:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=JD' },
-    { id: 'usr_3', name: 'John Smith', phone: '1112223333', role: 'caller', status: 'active', createdAt: new Date('2023-10-05T12:00:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=JS' },
-    { id: 'usr_4', name: 'Emily White', phone: '1112223334', role: 'caller', status: 'inactive', createdAt: new Date('2023-10-10T14:00:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=EW' },
-    { id: 'usr_5', name: 'Michael Brown', phone: '1112223335', role: 'caller', status: 'pending', createdAt: new Date('2023-10-12T16:45:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=MB' },
+    { id: 'usr_1', name: 'Admin User', email: 'admin@leadsflow.com', phone: '1112223331', role: 'admin', status: 'active', createdAt: new Date('2023-10-01T10:00:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=AU' },
+    { id: 'usr_2', name: 'Jane Doe', email: 'jane.doe@leadsflow.com', phone: '1112223332', role: 'caller', status: 'active', createdAt: new Date('2023-10-05T11:30:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=JD' },
+    { id: 'usr_3', name: 'John Smith', email: 'john.smith@leadsflow.com', phone: '1112223333', role: 'caller', status: 'active', createdAt: new Date('2023-10-05T12:00:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=JS' },
+    { id: 'usr_4', name: 'Emily White', email: 'emily.white@leadsflow.com', phone: '1112223334', role: 'caller', status: 'inactive', createdAt: new Date('2023-10-10T14:00:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=EW' },
+    { id: 'usr_5', name: 'Michael Brown', email: 'michael.brown@leadsflow.com', phone: '1112223335', role: 'caller', status: 'pending', createdAt: new Date('2023-10-12T16:45:00Z').toISOString(), avatar: 'https://placehold.co/32x32.png?text=MB' },
 ];
 
 export const leads: Lead[] = [

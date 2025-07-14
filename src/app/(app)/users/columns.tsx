@@ -34,7 +34,7 @@ const UserActions = ({ user }: { user: User }) => {
         title: `User ${user.status === 'active' ? 'Deactivated' : 'Activated'}`,
         description: `${user.name} has been successfully ${user.status === 'active' ? 'deactivated' : 'activated'}.`,
       });
-      // No router.refresh() needed with mock data, changes are local
+      router.refresh()
     } catch (error) {
       toast({
         title: 'Update Failed',
@@ -51,7 +51,7 @@ const UserActions = ({ user }: { user: User }) => {
         title: "User Approved",
         description: `${user.name} has been approved and is now active.`,
       });
-       // No router.refresh() needed with mock data, changes are local
+       router.refresh()
     } catch (error) {
        toast({
         title: 'Approval Failed',
@@ -163,7 +163,7 @@ export const columns: ColumnDef<User>[] = [
                 </div>
                 <div className="flex flex-col">
                   <span className="font-medium">{user.name}</span>
-                  <span className="text-xs text-muted-foreground">{user.phone}</span>
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
             </div>
         )

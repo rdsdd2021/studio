@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   name: string;
+  email: string;
   phone: string;
   role: 'admin' | 'caller';
   status: 'pending' | 'active' | 'inactive';
