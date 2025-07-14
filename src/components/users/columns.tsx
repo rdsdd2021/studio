@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal, CheckCircle, XCircle, Hourglass, ShieldAlert } from 'lucide-react'
+import { MoreHorizontal, CheckCircle, XCircle, Hourglass } from 'lucide-react'
 import type { User } from '@/lib/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'

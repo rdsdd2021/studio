@@ -244,41 +244,47 @@ export default function AccountPage() {
       })
   }
 
-  const handleSaveChanges = async (type: 'universal' | 'campaign' | 'dispositions') => {
-    if (!currentUser) return;
+  const handleSaveChanges = async (type: 'universal' | 'campaign' | 'dispositions' | 'subdispositions' | 'campaigndispositions' | 'campaignsubdispositions') => {
     setIsSubmitting(true);
     let promise;
     let title = '';
 
     try {
-      switch (type) {
-        case 'universal':
-          promise = saveUniversalCustomFields(universalFields);
-          title = 'Universal Fields Saved!';
-          break;
-        case 'campaign':
-          promise = saveCampaignCustomFields(campaignFields);
-          title = 'Campaign Fields Saved!';
-          break;
-        case 'dispositions':
-          promise = Promise.all([
-            saveGlobalDispositions(globalDispositions),
-            saveGlobalSubDispositions(globalSubDispositions),
-            saveCampaignDispositions(campaignDispositions, currentUser.id),
-            saveCampaignSubDispositions(campaignSubDispositions)
-          ]);
-          title = 'Dispositions Saved!';
-          break;
-      }
-      await promise;
-      toast({ title });
-      router.refresh();
+        switch (type) {
+            case 'universal':
+                promise = saveUniversalCustomFields(universalFields);
+                title = 'Universal Fields Saved!';
+                break;
+            case 'campaign':
+                promise = saveCampaignCustomFields(campaignFields);
+                title = 'Campaign Fields Saved!';
+                break;
+            case 'dispositions':
+                promise = saveGlobalDispositions(globalDispositions);
+                title = 'Global Dispositions Saved!';
+                break;
+            case 'subdispositions':
+                promise = saveGlobalSubDispositions(globalSubDispositions);
+                title = 'Global Sub-Dispositions Saved!';
+                break;
+            case 'campaigndispositions':
+                promise = saveCampaignDispositions(campaignDispositions);
+                title = 'Campaign Dispositions Saved!';
+                break;
+            case 'campaignsubdispositions':
+                promise = saveCampaignSubDispositions(campaignSubDispositions);
+                title = 'Campaign Sub-Dispositions Saved!';
+                break;
+        }
+        await promise;
+        toast({ title });
+        router.refresh();
     } catch (error: any) {
-      toast({ title: "Save Failed", description: error.message || `Could not save ${type}.`, variant: "destructive" });
+        toast({ title: "Save Failed", description: error.message || `Could not save ${type}.`, variant: "destructive" });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
-  }
+}
 
   if (isLoading || !currentUser) {
     return <Skeleton className="h-[500px] w-full" />;
@@ -486,19 +492,19 @@ export default function AccountPage() {
         </TabsContent>
          <TabsContent value="dispositions">
           <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <div>
-                <CardTitle>Dispositions</CardTitle>
+            <CardHeader>
+                <CardTitle>Dispositions Management</CardTitle>
                 <CardDescription>
                   Manage global and campaign-specific dispositions. Only admins can make changes.
                 </CardDescription>
-              </div>
-              {currentUser.role === 'admin' && <Button size="sm" onClick={() => handleSaveChanges('dispositions')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4" /> Save All Dispositions</Button>}
-            </CardHeader>
+              </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
                     <div className="space-y-4 rounded-lg border p-4">
-                        <h4 className="font-semibold">Global Dispositions</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-semibold">Global Dispositions</h4>
+                            {currentUser.role === 'admin' && <Button size="sm" variant="outline" onClick={() => handleSaveChanges('dispositions')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                        </div>
                         <div className="flex flex-wrap gap-2">
                             {globalDispositions.map(d => (
                                 <Badge key={d} variant="secondary" className="text-base py-1 pl-3 pr-2">
@@ -514,7 +520,10 @@ export default function AccountPage() {
                         </div>}
                     </div>
                     <div className="space-y-4 rounded-lg border p-4">
-                        <h4 className="font-semibold">Global Sub-Dispositions</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-semibold">Global Sub-Dispositions</h4>
+                            {currentUser.role === 'admin' && <Button size="sm" variant="outline" onClick={() => handleSaveChanges('subdispositions')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                        </div>
                         <div className="flex flex-wrap gap-2">
                             {globalSubDispositions.map(d => (
                                 <Badge key={d} variant="outline" className="text-base py-1 pl-3 pr-2">
@@ -548,7 +557,10 @@ export default function AccountPage() {
                 {selectedDispositionCampaign && (
                   <div className="grid md:grid-cols-2 gap-6 border-t pt-6">
                     <div className="space-y-4 rounded-lg border p-4">
-                      <h4 className="font-semibold">Dispositions for "{selectedDispositionCampaign}"</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Dispositions for "{selectedDispositionCampaign}"</h4>
+                        {currentUser.role === 'admin' && <Button size="sm" variant="outline" onClick={() => handleSaveChanges('campaigndispositions')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {(campaignDispositions[selectedDispositionCampaign] || []).map(d => (
                            <Badge key={d} variant="secondary" className="text-base py-1 pl-3 pr-2">
@@ -565,7 +577,10 @@ export default function AccountPage() {
                     </div>
 
                      <div className="space-y-4 rounded-lg border p-4">
-                      <h4 className="font-semibold">Sub-Dispositions for "{selectedDispositionCampaign}"</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Sub-Dispositions for "{selectedDispositionCampaign}"</h4>
+                        {currentUser.role === 'admin' && <Button size="sm" variant="outline" onClick={() => handleSaveChanges('campaignsubdispositions')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                      </div>
                        <div className="flex flex-wrap gap-2">
                         {(campaignSubDispositions[selectedDispositionCampaign] || []).map(d => (
                            <Badge key={d} variant="outline" className="text-base py-1 pl-3 pr-2">

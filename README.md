@@ -61,7 +61,7 @@ This is a Next.js application for a lead management system called LeadsFlow. It'
         FIREBASE_CLIENT_EMAIL="your-client-email@..."
         FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n....your private key...\n-----END PRIVATE KEY-----\n"
         ```
-        **Important**: For `FIREBASE_PRIVATE_KEY`, copy the entire key including the `-----BEGIN...` and `-----END...` lines. It must be enclosed in double quotes (`"`) and all newline characters within the key must be represented as `\n`.
+        **Important**: For `FIREBASE_PRIVATE_KEY`, copy the entire key including the `-----BEGIN...` and `-----END...` lines. It must be enclosed in double quotes (`"`), and all newline characters within the key **must be represented as `\n`**. A common error is copying the key without replacing the literal newlines.
 
     *   **Add AI API Key**: For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
         ```env
@@ -70,10 +70,15 @@ This is a Next.js application for a lead management system called LeadsFlow. It'
 
     *   Your final `.env.local` file should look similar to this:
         ```env
+        # Web app config from Firebase console
         NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"..."}'
+        
+        # Service account details from the downloaded JSON file
         FIREBASE_PROJECT_ID="my-leadsflow-app"
         FIREBASE_CLIENT_EMAIL="firebase-adminsdk-..."
         FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nABC...XYZ\n-----END PRIVATE KEY-----\n"
+
+        # Google AI API Key
         GOOGLE_API_KEY="<your-google-ai-api-key>"
         ```
 
@@ -152,4 +157,3 @@ service cloud.firestore {
     firebase apphosting:backends:deploy
     ```
     The CLI will guide you through creating the backend resource and deploying your app. After it finishes, it will provide you with the URL to your live application.
-
