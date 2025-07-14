@@ -14,6 +14,7 @@ import { users } from '@/lib/data'
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = React.useState('admin@leadsflow.com');
+  const [password, setPassword] = React.useState('password123');
   const [error, setError] = React.useState<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -22,12 +23,19 @@ export default function LoginPage() {
 
     // This is a mock authentication check.
     // In a real app, you would make an API call to your backend.
-    const user = users.find(u => u.name.toLowerCase().replace(' ', '') + '@leadsflow.com' === email);
+    
+    // Simple mock logic: derive user name from email. 
+    // e.g., 'jane.doe@leadsflow.com' -> 'Jane Doe'
+    const nameFromEmail = email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const user = users.find(u => u.name === nameFromEmail);
 
     if (!user) {
         setError("Invalid email or password.");
         return;
     }
+
+    // In a real app, you would verify the password hash here.
+    // For this prototype, we'll just check the user status.
 
     switch(user.status) {
         case 'pending':
@@ -37,8 +45,10 @@ export default function LoginPage() {
             setError("Your account has been deactivated. Please contact an administrator.");
             break;
         case 'active':
-            // In a real app, you'd also record the login event here.
-            router.push('/dashboard');
+            // In a real app, you'd also record the login event here and set a session cookie.
+            // For now, we'll just redirect. We can pass the user role for the dashboard to pick up.
+            // A better way in a real app would be to store the session info in a context provider.
+            router.push(`/dashboard`);
             break;
         default:
             setError("An unknown error occurred. Please try again.");
@@ -77,7 +87,13 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required defaultValue="password123" />
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
             {error && (
               <Alert variant="destructive">
@@ -87,6 +103,9 @@ export default function LoginPage() {
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
               Login
             </Button>
+             <CardDescription className="text-center text-xs pt-2">
+                Use `admin@leadsflow.com` or `jane.doe@leadsflow.com` or `john.smith@leadsflow.com` (pw: `password123`)
+             </CardDescription>
           </form>
         </CardContent>
       </Card>
