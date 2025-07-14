@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react';
@@ -45,6 +46,7 @@ import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Tag, Trash2, X } from 'lucide-react';
 import { getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings, getCampaignCustomFields, getUniversalCustomFields } from '@/actions/settings';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 
 const ProfileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -167,6 +169,12 @@ export default function AccountPage() {
   const [universalFields, setUniversalFields] = React.useState<string[]>([]);
   const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({});
   
+  // State for new field/disposition inputs
+  const [newUniversalField, setNewUniversalField] = React.useState('');
+  const [newCampaignField, setNewCampaignField] = React.useState('');
+  const [newDisposition, setNewDisposition] = React.useState('');
+  const [newSubDisposition, setNewSubDisposition] = React.useState('');
+
   const uniqueCampaigns = Object.keys(campaignFields);
   
   // MOCK DATA - In a real app this would come from a database or a global context
@@ -235,6 +243,70 @@ export default function AccountPage() {
      'Diwali Dhamaka': ['Call Back Tomorrow', 'Price Issue'],
   });
   const [selectedDispositionCampaign, setSelectedDispositionCampaign] = React.useState('');
+
+  const handleAddUniversalField = () => {
+    if (newUniversalField.trim() && !universalFields.includes(newUniversalField.trim())) {
+        setUniversalFields(prev => [...prev, newUniversalField.trim()]);
+        setNewUniversalField('');
+    }
+  }
+  const handleRemoveUniversalField = (field: string) => {
+    setUniversalFields(prev => prev.filter(f => f !== field));
+  }
+  
+  const handleAddCampaignField = () => {
+    if (newCampaignField.trim() && selectedCustomFieldCampaign && !campaignFields[selectedCustomFieldCampaign]?.includes(newCampaignField.trim())) {
+        setCampaignFields(prev => ({
+            ...prev,
+            [selectedCustomFieldCampaign]: [...(prev[selectedCustomFieldCampaign] || []), newCampaignField.trim()]
+        }));
+        setNewCampaignField('');
+    }
+  }
+  const handleRemoveCampaignField = (field: string) => {
+    if (selectedCustomFieldCampaign) {
+      setCampaignFields(prev => ({
+        ...prev,
+        [selectedCustomFieldCampaign]: prev[selectedCustomFieldCampaign].filter(f => f !== field)
+      }));
+    }
+  }
+
+  const handleAddDisposition = () => {
+      if (newDisposition.trim() && selectedDispositionCampaign && !campaignDispositions[selectedDispositionCampaign]?.includes(newDisposition.trim() as Disposition)) {
+          setCampaignDispositions(prev => ({
+              ...prev,
+              [selectedDispositionCampaign]: [...(prev[selectedDispositionCampaign] || []), newDisposition.trim() as Disposition]
+          }));
+          setNewDisposition('');
+      }
+  }
+  const handleRemoveDisposition = (disposition: string) => {
+      if (selectedDispositionCampaign) {
+          setCampaignDispositions(prev => ({
+              ...prev,
+              [selectedDispositionCampaign]: prev[selectedDispositionCampaign].filter(d => d !== disposition)
+          }));
+      }
+  }
+
+  const handleAddSubDisposition = () => {
+      if (newSubDisposition.trim() && selectedDispositionCampaign && !campaignSubDispositions[selectedDispositionCampaign]?.includes(newSubDisposition.trim() as SubDisposition)) {
+          setCampaignSubDispositions(prev => ({
+              ...prev,
+              [selectedDispositionCampaign]: [...(prev[selectedDispositionCampaign] || []), newSubDisposition.trim() as SubDisposition]
+          }));
+          setNewSubDisposition('');
+      }
+  }
+  const handleRemoveSubDisposition = (subDisposition: string) => {
+      if (selectedDispositionCampaign) {
+          setCampaignSubDispositions(prev => ({
+              ...prev,
+              [selectedDispositionCampaign]: prev[selectedDispositionCampaign].filter(d => d !== subDisposition)
+          }));
+      }
+  }
 
 
   return (
@@ -356,11 +428,19 @@ export default function AccountPage() {
                   {universalFields.map(field => (
                     <Badge key={field} variant="secondary" className="text-base py-1 pl-3 pr-2">
                       {field}
-                      <Button variant="ghost" size="icon" className="h-5 w-5 ml-1"><X className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleRemoveUniversalField(field)}><X className="h-3 w-3" /></Button>
                     </Badge>
                   ))}
                 </div>
-                <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Universal Field</Button>
+                 <div className="flex items-center gap-2">
+                    <Input 
+                        placeholder="New universal field..."
+                        value={newUniversalField}
+                        onChange={(e) => setNewUniversalField(e.target.value)}
+                        className="h-9 max-w-xs"
+                    />
+                    <Button size="sm" onClick={handleAddUniversalField}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                 </div>
               </CardContent>
             </Card>
 
@@ -391,11 +471,19 @@ export default function AccountPage() {
                             {(campaignFields[selectedCustomFieldCampaign] || []).map(field => (
                                 <Badge key={field} variant="outline" className="text-base py-1 pl-3 pr-2">
                                     {field}
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1"><X className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleRemoveCampaignField(field)}><X className="h-3 w-3" /></Button>
                                 </Badge>
                             ))}
                         </div>
-                        <Button variant="outline" size="sm" className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add Field for Campaign</Button>
+                        <div className="flex items-center gap-2 mt-4">
+                            <Input
+                                placeholder={`New field for ${selectedCustomFieldCampaign}...`}
+                                value={newCampaignField}
+                                onChange={(e) => setNewCampaignField(e.target.value)}
+                                className="h-9 max-w-xs"
+                            />
+                            <Button size="sm" onClick={handleAddCampaignField}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                        </div>
                     </div>
                 )}
               </CardContent>
@@ -432,11 +520,20 @@ export default function AccountPage() {
                         {(campaignDispositions[selectedDispositionCampaign] || globalDispositions).map(d => (
                            <Badge key={d} variant="secondary" className="text-base py-1 pl-3 pr-2">
                               {d}
-                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20"><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => handleRemoveDisposition(d)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                             </Badge>
                         ))}
                       </div>
-                      <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Disposition</Button>
+                      <Separator />
+                       <div className="flex items-center gap-2">
+                            <Input
+                                placeholder="New disposition..."
+                                value={newDisposition}
+                                onChange={(e) => setNewDisposition(e.target.value)}
+                                className="h-9"
+                            />
+                            <Button size="sm" onClick={handleAddDisposition}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                        </div>
                     </div>
 
                     {/* Sub-Dispositions Card */}
@@ -446,11 +543,20 @@ export default function AccountPage() {
                         {(campaignSubDispositions[selectedDispositionCampaign] || globalSubDispositions).map(d => (
                            <Badge key={d} variant="outline" className="text-base py-1 pl-3 pr-2">
                               {d}
-                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20"><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => handleRemoveSubDisposition(d)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                             </Badge>
                         ))}
                       </div>
-                       <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Sub-Disposition</Button>
+                      <Separator />
+                      <div className="flex items-center gap-2">
+                            <Input
+                                placeholder="New sub-disposition..."
+                                value={newSubDisposition}
+                                onChange={(e) => setNewSubDisposition(e.target.value)}
+                                className="h-9"
+                            />
+                            <Button size="sm" onClick={handleAddSubDisposition}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                        </div>
                     </div>
                   </div>
                 )}
@@ -461,3 +567,5 @@ export default function AccountPage() {
     </div>
   )
 }
+
+    
