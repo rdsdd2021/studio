@@ -1,3 +1,4 @@
+
 import { getLeads, getAssignments } from '@/actions/leads';
 import { Lead, Assignment } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
@@ -49,11 +50,8 @@ export default async function MyLeadsPage() {
       </div>
       <DataTable 
         columns={columns} 
-        data={data} 
-        schoolOptions={[]}
-        localityOptions={[]}
-        districtOptions={[]}
-        genderOptions={[]}
+        data={data}
+        showToolbar={false}
       />
     </div>
   )

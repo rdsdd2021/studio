@@ -35,6 +35,7 @@ interface Option {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  showToolbar?: boolean;
   callers?: Option[];
   schoolOptions?: Option[];
   localityOptions?: Option[];
@@ -46,6 +47,7 @@ interface DataTableProps<TData, TValue> {
 export function DataTable<TData, TValue>({
   columns,
   data,
+  showToolbar = true,
   callers,
   schoolOptions,
   localityOptions,
@@ -113,9 +115,6 @@ export function DataTable<TData, TValue>({
     setIsAllFilteredRowsSelected(false);
     table.resetRowSelection();
   }, [columnFilters, globalFilter, table]);
-
-
-  const showToolbar = !!(callers || schoolOptions || localityOptions || districtOptions || genderOptions || campaignOptions);
 
   return (
     <div className="space-y-4">

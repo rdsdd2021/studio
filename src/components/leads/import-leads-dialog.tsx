@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast'
 import { importLeads } from '@/actions/leads'
 import type { Lead } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
-import { Lightbulb, FileQuestion, Map } from 'lucide-react'
+import { Lightbulb, FileQuestion, Map, Download } from 'lucide-react'
 import { campaignCustomFields, universalCustomFields } from '@/lib/data'
 
 
@@ -189,8 +189,14 @@ export function ImportLeadsDialog({
             <Alert>
                 <Lightbulb className="h-4 w-4" />
                 <AlertTitle>File Requirements</AlertTitle>
-                <AlertDescription className="text-xs">
-                    Your CSV must contain `name` and `phone` columns. Other standard fields like `gender`, `school`, `locality`, and `district` are optional.
+                <AlertDescription className="text-xs space-y-2">
+                    <p>Your CSV must contain `name` and `phone` columns. Other standard fields like `gender`, `school`, `locality`, and `district` are optional.</p>
+                    <Button asChild variant="link" className="p-0 h-auto font-normal">
+                      <a href="/leads_sample.csv" download>
+                        <Download className="mr-2 h-3 w-3" />
+                        Download sample CSV format
+                      </a>
+                    </Button>
                 </AlertDescription>
             </Alert>
             <div className="space-y-2">

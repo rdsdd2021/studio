@@ -35,6 +35,7 @@ interface DataTableToolbarProps<TData> {
   districtOptions?: Option[];
   genderOptions?: Option[];
   campaignOptions?: Option[];
+  showImportButton?: boolean;
 }
 
 export function DataTableToolbar<TData>({
@@ -45,6 +46,7 @@ export function DataTableToolbar<TData>({
   districtOptions,
   genderOptions,
   campaignOptions,
+  showImportButton = true,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0 || !!table.getState().globalFilter;
 
@@ -147,10 +149,12 @@ export function DataTableToolbar<TData>({
           )}
         </div>
         <div className='flex items-center gap-2'>
-            <Button size="sm" variant="outline" className="h-8" onClick={() => setIsImportDialogOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import
-            </Button>
+            {showImportButton && (
+                <Button size="sm" variant="outline" className="h-8" onClick={() => setIsImportDialogOpen(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import
+                </Button>
+            )}
             {leadCount > 0 && (
               <>
                 <Button size="sm" variant="outline" className="h-8" onClick={() => setIsCampaignDialogOpen(true)}>
