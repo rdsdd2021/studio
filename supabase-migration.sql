@@ -1,5 +1,8 @@
 -- LeadsFlow Database Schema for Supabase
 -- Run this SQL in your Supabase SQL editor to set up the database
+--
+-- Note: The phone field in users table is nullable to allow user signup
+-- without requiring a phone number initially. Users can update it later.
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -9,7 +12,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20) NOT NULL,
+    phone VARCHAR(20), -- Made nullable, can be updated later
     role VARCHAR(10) NOT NULL CHECK (role IN ('admin', 'caller')),
     status VARCHAR(10) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'inactive')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -176,11 +179,12 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         -- Insert new user into users table if not exists
-        INSERT INTO users (id, email, name, role, status)
+        INSERT INTO users (id, email, name, phone, role, status)
         VALUES (
             NEW.id,
             NEW.email,
             COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+            NEW.raw_user_meta_data->>'phone', -- Will be NULL if not provided
             COALESCE(NEW.raw_user_meta_data->>'role', 'caller'),
             'pending'
         )
@@ -197,11 +201,12 @@ CREATE TRIGGER sync_user_trigger
     EXECUTE FUNCTION sync_user_to_users_table();
 
 -- Insert a default admin user (you'll need to create this user in Supabase Auth first)
--- Replace with your actual admin email
+-- Replace with your actual admin email and phone
 INSERT INTO users (
     id, 
     email, 
     name, 
+    phone,
     role, 
     status, 
     created_at
@@ -209,12 +214,14 @@ INSERT INTO users (
     '00000000-0000-0000-0000-000000000000', -- Replace with actual UUID from auth.users
     'admin@example.com',
     'System Admin',
+    '+1234567890', -- Replace with actual admin phone number
     'admin',
     'active',
     NOW()
 ) ON CONFLICT (email) DO UPDATE SET
     role = 'admin',
-    status = 'active';
+    status = 'active',
+    phone = '+1234567890';
 
 -- Create sample data (optional)
 INSERT INTO leads (name, phone, gender, school, locality, district, campaigns) VALUES

@@ -14,7 +14,7 @@ export interface Database {
           id: string
           name: string
           email: string
-          phone: string
+          phone: string | null
           role: 'admin' | 'caller'
           status: 'pending' | 'active' | 'inactive'
           created_at: string
@@ -29,7 +29,7 @@ export interface Database {
           id?: string
           name: string
           email: string
-          phone: string
+          phone?: string | null
           role: 'admin' | 'caller'
           status?: 'pending' | 'active' | 'inactive'
           created_at?: string

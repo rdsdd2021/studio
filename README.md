@@ -101,6 +101,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    - Go to Table Editor → users table
    - Find the record with your email
    - Update the `role` to `admin` and `status` to `active`
+   - Optionally add a phone number (field is nullable)
 
 ### 5. Start the Application
 
@@ -293,7 +294,18 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🆘 Support & Troubleshooting
+
+### Common Setup Issues
+
+**Error: "null value in column 'phone' violates not-null constraint"**
+- **Solution**: This has been fixed in the latest migration. The phone field is now nullable.
+- **Workaround**: If you encounter this, update your migration file from the latest version.
+
+**Cannot login after creating admin user**
+- **Solution**: Make sure to set the user's `role` to `admin` and `status` to `active` in the users table.
+
+### Getting Help
 
 - **Documentation**: Check this README and inline code comments
 - **Issues**: Create an issue on GitHub for bugs or feature requests
