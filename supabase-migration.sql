@@ -121,6 +121,10 @@ CREATE POLICY "Admins can manage users" ON users
         )
     );
 
+-- Allow authenticated users to insert their own user record (for initial signup)
+CREATE POLICY "Allow user self-insert" ON users
+    FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- All authenticated users can read leads
 CREATE POLICY "Authenticated users can read leads" ON leads
     FOR SELECT USING (auth.role() = 'authenticated');
@@ -179,14 +183,15 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         -- Insert new user into users table if not exists
-        INSERT INTO users (id, email, name, phone, role, status)
+        INSERT INTO users (id, email, name, phone, role, status, created_by)
         VALUES (
             NEW.id,
             NEW.email,
             COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
             NEW.raw_user_meta_data->>'phone', -- Will be NULL if not provided
             COALESCE(NEW.raw_user_meta_data->>'role', 'caller'),
-            'pending'
+            'pending',
+            NEW.raw_user_meta_data->>'created_by' -- Pass through who created this user
         )
         ON CONFLICT (id) DO NOTHING;
     END IF;

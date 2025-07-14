@@ -81,7 +81,32 @@ npm run dev
 
 Navigate to `http://localhost:9002` and log in with your admin credentials.
 
-## 🛠 Database Schema
+## � Troubleshooting
+
+### Common Issues
+
+**1. "Failed to create user: Database error creating new user"**
+- This is usually caused by RLS policy conflicts
+- Make sure you're using the latest migration file which includes proper policies
+- The sync trigger should handle user creation automatically
+
+**2. "null value in column 'phone' violates not-null constraint"**
+- Use the updated migration file where phone is nullable
+- Or run: `ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;`
+
+**3. User creation seems to work but user can't log in**
+- Check that the user's `status` is set to `active` in the users table
+- Check that the user's `role` is set correctly
+- Verify the user exists in both `auth.users` and the `users` table
+
+### Verification Steps
+
+1. **Check Auth User**: Go to Authentication → Users in Supabase dashboard
+2. **Check Users Table**: Go to Table Editor → users table
+3. **Check Sync Trigger**: Ensure it's working by creating a test user
+4. **Check RLS Policies**: Verify all policies are created correctly
+
+## �🛠 Database Schema
 
 ### Tables Created:
 

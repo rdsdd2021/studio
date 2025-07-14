@@ -158,47 +158,46 @@ export async function addUser(newUser: Omit<User, 'id' | 'createdAt' | 'status'>
   const token = authHeader.split('Bearer ')[1];
   const currentUser = await verifyUser(token, 'admin');
 
-  // Create user in Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email: newUser.email,
-    password: newUser.password!,
-    phone: newUser.phone,
-    user_metadata: {
-      name: newUser.name,
-      role: newUser.role
+  try {
+    // Create user in Supabase Auth with metadata
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: newUser.email,
+      password: newUser.password!,
+      phone: newUser.phone,
+      user_metadata: {
+        name: newUser.name,
+        role: newUser.role,
+        phone: newUser.phone,
+        created_by: currentUser.name
+      },
+      email_confirm: true // Auto-confirm email
+    });
+
+    if (authError || !authData.user) {
+      throw new Error(`Failed to create auth user: ${authError?.message || 'Unknown error'}`);
     }
-  });
 
-  if (authError || !authData.user) {
-    throw new Error(`Failed to create auth user: ${authError?.message || 'Unknown error'}`);
+    // Wait a moment for the sync trigger to create the user record
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Fetch the created user record from the users table (created by sync trigger)
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (fetchError || !userData) {
+      // If sync trigger failed, clean up auth user and throw error
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw new Error(`User record not created by sync trigger: ${fetchError?.message || 'Unknown error'}`);
+    }
+
+    return convertDbUserToUser(userData);
+  } catch (error) {
+    // If anything fails, make sure to clean up
+    throw new Error(`Database error creating new user: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Create user record in our users table
-  const dbUser = {
-    id: authData.user.id,
-    name: newUser.name,
-    email: newUser.email,
-    phone: newUser.phone,
-    role: newUser.role,
-    status: 'pending' as const,
-    avatar: newUser.avatar || null,
-    login_status: null,
-    created_by: currentUser.name
-  };
-
-  const { data, error } = await supabase
-    .from('users')
-    .insert([dbUser])
-    .select()
-    .single();
-
-  if (error) {
-    // If user table insert fails, clean up auth user
-    await supabase.auth.admin.deleteUser(authData.user.id);
-    throw new Error(`Failed to create user record: ${error.message}`);
-  }
-
-  return convertDbUserToUser(data);
 }
 
 // Keep createUser as an alias for backward compatibility

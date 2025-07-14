@@ -111,6 +111,15 @@ npm run dev
 
 Navigate to `http://localhost:9002` and log in with your admin credentials!
 
+### 6. Test User Creation (Optional)
+
+To verify everything is working:
+1. Log in as admin
+2. Go to Users page 
+3. Click "Add User" button
+4. Fill in the form and create a test user
+5. Check that the user appears in both the Users table and Authentication section
+
 ## 📋 Database Schema
 
 ### Tables Overview
@@ -301,6 +310,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Error: "null value in column 'phone' violates not-null constraint"**
 - **Solution**: This has been fixed in the latest migration. The phone field is now nullable.
 - **Workaround**: If you encounter this, update your migration file from the latest version.
+
+**Error: "Failed to create user: Database error creating new user"**
+- **Cause**: Usually caused by RLS policies or conflicts between the sync trigger and manual user creation.
+- **Solution**: The latest code uses the sync trigger instead of manual database insertion.
+- **Check**: Ensure you're using the updated migration file with proper RLS policies.
 
 **Cannot login after creating admin user**
 - **Solution**: Make sure to set the user's `role` to `admin` and `status` to `active` in the users table.
