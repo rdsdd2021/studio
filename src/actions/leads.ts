@@ -1,9 +1,14 @@
 'use server'
 
 import { db } from '@/lib/firebase';
+import { leads as mockLeads, assignmentHistory as mockAssignments } from '@/lib/data';
 import type { Lead, Assignment, Disposition, SubDisposition } from "@/lib/types"
 
 export async function getLeads(): Promise<Lead[]> {
+  if (!db) {
+    console.warn('DB not configured, returning mock leads.');
+    return JSON.parse(JSON.stringify(mockLeads));
+  }
   const snapshot = await db.collection('leads').orderBy('createdAt', 'desc').get();
   if (snapshot.empty) {
     return [];
@@ -12,6 +17,10 @@ export async function getLeads(): Promise<Lead[]> {
 }
 
 export async function getAssignments(): Promise<Assignment[]> {
+    if (!db) {
+        console.warn('DB not configured, returning mock assignments.');
+        return JSON.parse(JSON.stringify(mockAssignments));
+    }
     const snapshot = await db.collection('assignmentHistory').orderBy('assignedTime', 'desc').get();
     if (snapshot.empty) {
       return [];
@@ -20,6 +29,9 @@ export async function getAssignments(): Promise<Assignment[]> {
 }
 
 export async function getLeadDetails(id: string): Promise<Lead | undefined> {
+  if (!db) {
+    return mockLeads.find(l => l.refId === id);
+  }
   const doc = await db.collection('leads').doc(id).get();
   if (!doc.exists) {
     return undefined;
@@ -28,6 +40,9 @@ export async function getLeadDetails(id: string): Promise<Lead | undefined> {
 }
 
 export async function getAssignmentHistory(leadId: string): Promise<Assignment[]> {
+    if (!db) {
+        return mockAssignments.filter(a => a.mainDataRefId === leadId);
+    }
   const snapshot = await db.collection('assignmentHistory')
     .where('mainDataRefId', '==', leadId)
     .orderBy('assignedTime', 'desc')
@@ -48,6 +63,7 @@ export async function addAssignment(
   followUpDate?: Date,
   scheduleDate?: Date
 ): Promise<Assignment> {
+    if (!db) { throw new Error("Database not configured."); }
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
         throw new Error("User not found");
@@ -75,6 +91,7 @@ export async function addAssignment(
 }
 
 export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
+    if (!db) { throw new Error("Database not configured."); }
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
         throw new Error("User not found");
@@ -107,6 +124,7 @@ export async function importLeads(
   newLeads: Partial<Lead>[],
   campaign?: string
 ): Promise<{ count: number }> {
+    if (!db) { throw new Error("Database not configured."); }
     const now = new Date().toISOString();
     const batch = db.batch();
     
@@ -132,6 +150,7 @@ export async function importLeads(
 
 
 export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
+    if (!db) { throw new Error("Database not configured."); }
     const { firestore } = await import('firebase-admin/firestore');
     const batch = db.batch();
     
@@ -147,6 +166,7 @@ export async function addCampaignToLeads(leadIds: string[], campaign: string): P
 }
 
 export async function updateLeadCustomField(leadId: string, fieldName: string, value: string, userId: string): Promise<Lead> {
+    if (!db) { throw new Error("Database not configured."); }
     const leadRef = db.collection('leads').doc(leadId);
     
     const userDoc = await db.collection('users').doc(userId).get();
