@@ -14,7 +14,7 @@ export default async function TrackerPage() {
           View recent login and logout events for all users.
         </p>
       </div>
-      <DataTable columns={columns} data={data} />
+      <DataTable columns={columns} data={data} showToolbar={false} />
     </div>
   )
 }
