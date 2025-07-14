@@ -4,39 +4,45 @@
 import * as React from 'react';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from './columns';
-import { loginActivity, users } from '@/lib/data';
 import type { LoginActivity, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { AddUserDialog } from '@/components/users/add-user-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getUsers } from '@/actions/users';
+
+// This is still using mock data, in a real app, this would be fetched from the DB
+import { loginActivity } from '@/lib/data';
+
 
 export default function UsersPage() {
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   const [data, setData] = React.useState<User[] | null>(null);
 
   React.useEffect(() => {
-    // In a real app, this data would be fetched. Here we simulate it.
-    const latestActivityMap = new Map<string, LoginActivity>();
+    async function fetchUsers() {
+      const users = await getUsers();
+      // In a real app, this login activity would also be fetched from the DB
+      const latestActivityMap = new Map<string, LoginActivity>();
 
-    loginActivity
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .forEach(activity => {
-          if (!latestActivityMap.has(activity.userId)) {
-              latestActivityMap.set(activity.userId, activity);
-          }
+      loginActivity
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .forEach(activity => {
+            if (!latestActivityMap.has(activity.userId)) {
+                latestActivityMap.set(activity.userId, activity);
+            }
+        });
+
+      const enrichedUsers = users.map(user => {
+        const latestActivity = latestActivityMap.get(user.id);
+        const loginStatus = latestActivity?.activity === 'login' ? 'online' : 'offline';
+        return { ...user, loginStatus };
       });
 
-    const enrichedUsers = users.map(user => {
-      const latestActivity = latestActivityMap.get(user.id);
-      const loginStatus = latestActivity?.activity === 'login' ? 'online' : 'offline';
-      return { ...user, loginStatus };
-    });
-
-    // Simulate network delay
-    setTimeout(() => {
-        setData(enrichedUsers);
-    }, 500);
+      setData(enrichedUsers);
+    }
+    
+    fetchUsers();
   }, []);
 
 

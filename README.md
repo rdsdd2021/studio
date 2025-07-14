@@ -1,24 +1,26 @@
 # LeadsFlow
 
-This is a Next.js application for a lead management system called LeadsFlow. It serves as a high-fidelity prototype that is fully functional using mock data, and is designed to be easily connected to a production backend like Supabase.
+This is a Next.js application for a lead management system called LeadsFlow. It serves as a high-fidelity prototype designed to be fully functional and easily connected to a production Firebase backend.
 
 ## Core Features
 
-- **User Authentication**: A mock login screen to simulate user authentication for different roles.
-- **Dashboard Overview**: A dashboard displaying key lead metrics and recent activity, all powered by mock data.
-- **Flexible Lead Import**: Import leads from a CSV file. Only `name` and `phone` are required.
-- **Campaign Field Mapping**: When importing, optionally select a campaign and map columns from your CSV to campaign-specific custom fields.
-- **Lead Filtering & Assignment**: Screens for administrators to filter, view, and assign leads to callers.
-- **Caller & Detail Views**: Dedicated views for callers to see their assigned leads and for anyone to view the detailed history of a specific lead.
-- **Caller Data Entry**: Callers can input data for predefined custom fields on a lead. This action is tracked with the user's name and a timestamp.
-- **User Management**: A section for admins to add, edit, and manage user accounts.
-- **AI-Powered Suggestions**: A Genkit flow that suggests appropriate sub-dispositions for a call based on the caller's remarks.
+-   **User Authentication**: A mock login screen to simulate user authentication for different roles.
+-   **Role-Based Dashboards**: Separate, tailored dashboards for Admins and Callers.
+-   **Flexible Lead Import**: Import leads from a CSV file. Only `name` and `phone` are required.
+-   **Campaign Field Mapping**: When importing, optionally select a campaign and map columns from your CSV to campaign-specific custom fields.
+-   **Lead Filtering & Assignment**: Screens for administrators to filter, view, and assign leads to callers.
+-   **Caller & Detail Views**: Dedicated views for callers to see their assigned leads and for anyone to view the detailed history of a specific lead.
+-   **Caller Data Entry**: Callers can input data for predefined custom fields on a lead. This action is tracked with the user's name and a timestamp.
+-   **User Management**: A section for admins to add, edit, and manage user accounts.
+-   **AI-Powered Suggestions**: A Genkit flow that suggests appropriate sub-dispositions for a call based on the caller's remarks.
+-   **Geofencing**: Admins can define an operational area to monitor or restrict user logins.
 
 ## Tech Stack
 
-- **Framework**: Next.js (App Router)
-- **UI**: React, ShadCN UI, Tailwind CSS
-- **AI**: Google Genkit
+-   **Framework**: Next.js (App Router)
+-   **UI**: React, ShadCN UI, Tailwind CSS
+-   **AI**: Google Genkit
+-   **Backend (Recommended)**: Firebase (Firestore)
 
 ---
 
@@ -28,236 +30,92 @@ The application is designed around two primary user roles: **Admin** and **Calle
 
 ### User Roles & Access
 
-| Page | Route | Admin Access | Caller Access | Description |
-| :--- | :--- | :---: | :---: | :--- |
-| **Dashboard** | `/dashboard` | ✅ | ✅ | Overview of lead statistics and recent activity. |
-| **All Leads** | `/leads` | ✅ | ❌ | View, filter, and assign all leads in the system. |
-| **My Leads** | `/my-leads` | ❌ | ✅ | View only the leads specifically assigned to the logged-in caller. |
-| **Lead Detail** | `/leads/[id]` | ✅ | ✅ | View detailed information and history for a single lead. Callers can add info to empty custom fields. |
-| **User Management** | `/users` | ✅ | ❌ | Add, edit, approve, and deactivate users. |
-| **Login Tracker** | `/tracker` | ✅ | ❌ | View a log of user login/logout activity. |
-| **Account/Settings**| `/account` | ✅ | ✅ | Manage personal profile and application-wide settings (e.g., custom fields, dispositions, geofencing). |
+| Page                | Route         | Admin Access | Caller Access | Description                                                                                          |
+| :------------------ | :------------ | :----------: | :-----------: | :--------------------------------------------------------------------------------------------------- |
+| **Dashboard**       | `/dashboard`  |      ✅      |       ✅      | Role-specific overview of lead statistics and recent activity.                                       |
+| **All Leads**       | `/leads`      |      ✅      |       ❌      | View, filter, and assign all leads in the system.                                                    |
+| **My Leads**        | `/my-leads`   |      ❌      |       ✅      | View only the leads specifically assigned to the logged-in caller.                                   |
+| **Lead Detail**     | `/leads/[id]` |      ✅      |       ✅      | View detailed information and history for a single lead. Callers can add info to empty custom fields. |
+| **User Management** | `/users`      |      ✅      |       ❌      | Add, edit, approve, and deactivate users.                                                            |
+| **Login Tracker**   | `/tracker`    |      ✅      |       ❌      | View a log of user login/logout activity.                                                            |
+| **Account/Settings**| `/account`    |      ✅      |       ✅      | Manage personal profile and application-wide settings (e.g., custom fields, dispositions, geofencing). |
 
 ### User Flow
 
-1.  **Login**: A user logs in via the `/login` page. The system checks the mock user data to determine their role and status. For example, logging in as `admin@leadsflow.com` grants Admin access, while `jane.doe@leadsflow.com` would be a Caller.
-2.  **Dashboard**: After logging in, the user lands on the Dashboard, which shows high-level statistics.
+1.  **Login**: A user logs in via the `/login` page. The system checks mock user data to determine their role.
+2.  **Dashboard**: After logging in, the user lands on their role-specific Dashboard.
+    -   **Admin**: Sees a high-level overview of team performance, total leads, and recent system activity.
+    -   **Caller**: Sees their personal statistics, a list of upcoming follow-ups, and a button to start calling leads.
 3.  **Lead Import (Admin)**: An Admin can navigate to "All Leads" and use the "Import" button.
     -   They upload a CSV file. The only mandatory columns are `name` and `phone`.
-    -   Optionally, they can select a campaign. If they do, the system displays the custom fields defined for that campaign (e.g., "Parent's Name").
-    -   The admin can then map the columns from their CSV file to these custom fields.
+    -   Optionally, they can select a campaign. If they do, the system displays the custom fields defined for that campaign.
+    -   The admin can then map columns from their CSV file to these custom fields.
     -   Upon import, new leads are created with the mapped data.
-4.  **Lead Management (Admin)**: An Admin can use filters on the "All Leads" page (`/leads`) to select specific leads and assign them in bulk to an active "Caller" user.
+4.  **Lead Management (Admin)**: An Admin can use filters on the "All Leads" page (`/leads`) to select specific leads and assign them in bulk to an active "Caller" user. They can also add campaign tags to multiple leads at once.
 5.  **Caller Workflow (Caller)**: A Caller navigates to "My Leads" (`/my-leads`) to see their queue. They can click on a lead to go to the "Lead Detail" page (`/leads/[id]`).
     -   On the detail page, they can see all lead details. In the "Additional Information" section, they can fill in any custom fields that are currently empty.
     -   Once a field is updated, it becomes read-only, displaying the value, the name of the caller who updated it, and the date of the update.
-    -   The caller can then use the "Update Status" form to log the call's outcome. The AI Suggestion feature can help them choose the best sub-disposition.
-6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like custom fields, dispositions, and geofencing.
+    -   The caller can then use the "Update Status" form to log the call's outcome, with date pickers appearing for follow-ups or scheduled appointments. The AI Suggestion feature can help them choose the best sub-disposition.
+6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like universal/campaign custom fields, custom dispositions, and geofencing.
 
 ---
 
-## Mock Data Usage
+## How to Make This App Launch-Ready with Firebase
 
-The entire application currently runs on mock data located in **`src/lib/data.ts`**. This file exports arrays of objects that simulate database tables:
+To transition this prototype into a production application, you need to replace the mock data with a real Firebase backend. The application is architected to make this process straightforward.
 
--   `users`: A list of all user accounts, including their roles and statuses.
--   `leads`: A list of all lead records. The `customFields` property is an object where each key is a field name and the value is another object containing the `value`, `updatedBy`, and `updatedAt`.
--   `assignmentHistory`: A log of which leads have been assigned to which users and the outcomes of those assignments.
--   `loginActivity`: A log of user login/logout events.
--   `universalCustomFields` & `campaignCustomFields`: Defines the additional data fields that appear on lead detail pages and can be configured on the Account page.
+### Step 1: Set Up a Firebase Project
 
-These mock data arrays are imported and manipulated by **Server Actions** located in the **`src/actions/`** directory. For example, when a Caller updates a custom field, the `updateLeadCustomField` function in `src/actions/leads.ts` modifies the corresponding lead object in the `leads` array.
+1.  **Create a Firebase Project**:
+    -   Go to the [Firebase Console](https://console.firebase.google.com/), sign in, and click "Add project".
+    -   Follow the on-screen instructions to create your project.
 
-This setup makes the application fully interactive and allows for complete testing of the UI and user flow without any backend dependencies.
+2.  **Set Up Firestore**:
+    -   From your project's dashboard, go to the **Firestore Database** section.
+    -   Click "Create database" and start in **production mode**.
+    -   Choose a location for your database.
 
----
-
-## How to Make This App Launch-Ready with Supabase
-
-To transition this prototype into a production application, you need to replace the mock data with a real Supabase backend. The application is architected to make this process straightforward.
-
-### Step 1: Set Up a Supabase Project
-
-1.  **Create a Supabase Project**:
-    -   Go to [supabase.com](https://supabase.com/), sign in, and click "New project".
-    -   Give your project a name, generate a secure database password, and choose a region.
-
-2.  **Get API Credentials**:
-    -   Once the project is ready, navigate to the **Project Settings** (the gear icon).
-    -   Go to the **API** section.
-    -   You will need three values from this page:
-        -   **Project URL**
-        -   **`anon` `public` key**
-        -   **`service_role` `secret` key**
+3.  **Generate a Service Account Key**:
+    -   In your Firebase project, go to **Project Settings** (the gear icon).
+    -   Navigate to the **Service accounts** tab.
+    -   Click "Generate new private key". A JSON file will be downloaded. This file contains the credentials your Next.js server will use to securely connect to Firebase services.
 
 ### Step 2: Configure Your Local Environment
 
 1.  **Create an Environment File**:
-    -   In the root of your project, rename the existing `.env` file to `.env.local`. This is a special file that Next.js automatically loads for environment variables.
+    -   In the root of your project, create a file named `.env.local`. This is a special file that Next.js automatically loads for environment variables.
 
 2.  **Add Credentials to `.env.local`**:
-    -   Add your Supabase credentials to the `.env.local` file. It's important to prefix the client-side keys with `NEXT_PUBLIC_`.
+    -   Open the JSON key file you downloaded. You will need three values: `project_id`, `client_email`, and `private_key`.
+    -   Add these to your `.env.local` file.
         ```env
-        NEXT_PUBLIC_SUPABASE_URL="<your-project-url>"
-        NEXT_PUBLIC_SUPABASE_ANON_KEY="<your-anon-key>"
-        SUPABASE_SERVICE_ROLE_KEY="<your-service-role-key>"
+        FIREBASE_PROJECT_ID="<your-project-id>"
+        FIREBASE_CLIENT_EMAIL="<your-client-email>"
+        FIREBASE_PRIVATE_KEY="<your-private-key>"
         ```
+    -   **Important**: The `private_key` from the JSON file contains newline characters (`\n`). When you paste it into the `.env.local` file, you may need to ensure they are preserved correctly. The provided `src/lib/firebase.ts` file handles replacing `\\n` with `\n`.
 
-### Step 3: Set Up Database Schema
+### Step 3: Set Up Database Collections
 
-In your Supabase project dashboard, go to the **SQL Editor** and run the following queries to create the necessary tables and types.
+The application is designed to work with the following Firestore collections. Firestore will create these automatically when you first write data to them, but it's good to know the intended structure.
 
-```sql
--- Create custom enum types for roles and statuses
-CREATE TYPE user_role AS ENUM ('admin', 'caller');
-CREATE TYPE user_status AS ENUM ('pending', 'active', 'inactive');
-CREATE TYPE disposition_type AS ENUM ('New', 'Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable');
+-   **`users`**: Stores user profiles. (e.g., `{ name: 'Jane Doe', role: 'caller', status: 'active', ... }`)
+-   **`leads`**: Stores all lead records. (e.g., `{ name: 'Aarav Sharma', phone: '9876543210', customFields: { ... }, ... }`)
+-   **`assignmentHistory`**: Logs all dispositions and assignments for each lead. (e.g., `{ mainDataRefId: '...', userId: '...', disposition: 'Interested', ... }`)
+-   **`loginActivity`**: Tracks user login/logout events. (e.g., `{ userId: '...', activity: 'login', ... }`)
+-   **`settings`**: A key-value store for application settings. Each document in this collection has an ID that represents the setting's key.
+    -   `doc('geofence')`: Stores the geofencing configuration.
+    -   `doc('universalCustomFields')`: Stores the list of custom fields that apply to all leads.
+    -   `doc('campaignCustomFields')`: Stores the map of campaign-specific custom fields.
+    -   And so on for other settings like dispositions.
 
--- 1. Users Table
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    phone TEXT,
-    role user_role NOT NULL,
-    status user_status NOT NULL DEFAULT 'pending',
-    avatar TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### Step 4: Review Server Actions
 
--- 2. Campaigns Table
-CREATE TABLE campaigns (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+The server actions in `src/actions/*.ts` have been rewritten to use the Firebase Admin SDK to communicate with Firestore. They no longer use the mock data from `src/lib/data.ts`. You should review these files to understand how the application interacts with the database.
 
--- 3. Leads Table
-CREATE TABLE leads (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    gender TEXT,
-    school TEXT,
-    locality TEXT,
-    district TEXT,
-    custom_fields JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### Step 5: Setting Up Genkit for AI Features
 
--- 4. Lead Campaigns Junction Table (Many-to-Many)
-CREATE TABLE lead_campaigns (
-    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
-    campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
-    PRIMARY KEY (lead_id, campaign_id)
-);
-
--- 5. Assignment History Table
-CREATE TABLE assignment_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE NOT NULL,
-    user_id UUID REFERENCES users(id) NOT NULL,
-    user_name TEXT NOT NULL,
-    assigned_time TIMESTAMPTZ DEFAULT NOW(),
-    disposition disposition_type,
-    disposition_time TIMESTAMPTZ,
-    sub_disposition TEXT,
-    remark TEXT,
-    follow_up_date DATE,
-    schedule_date DATE
-);
-
--- 6. Login Activity Table
-CREATE TABLE login_activity (
-    id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    user_name TEXT NOT NULL,
-    activity TEXT NOT NULL, -- 'login' or 'logout'
-    ip_address INET,
-    device TEXT,
-    timestamp TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 7. App Settings (Key-Value Store)
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value JSONB
-);
-
--- Insert default geofence settings
-INSERT INTO settings (key, value) VALUES ('geofence', '{"centerLocation": "Connaught Place, New Delhi", "radius": 5000}');
-```
-
-### Step 4: Create Supabase Clients
-
-Create a file at `src/lib/supabase.ts` to manage your Supabase client instances for server-side and client-side code.
-
-```typescript
-import { createClient } from '@supabase/supabase-js';
-
-// Client for use in client-side components and pages
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Admin client for use in server actions and route handlers
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
-```
-
-### Step 5: Rewrite Server Actions
-
-This is the most critical step. You need to replace the functions that manipulate mock data with functions that interact with your Supabase database.
-
-**Location of Actions**: `src/actions/*.ts`
-
-**General Process**:
-For each function, you will:
-1.  Import the `supabaseAdmin` instance from `src/lib/supabase.ts`.
-2.  Replace the array manipulation logic (e.g., `leads.find(...)`, `users.push(...)`) with Supabase SDK calls (e.g., `supabaseAdmin.from('leads').select()`).
-
-**Example: Rewriting `getLeads()` in `src/actions/leads.ts`**
-
-*   **Before (Mock Data)**:
-    ```typescript
-    import { leads } from '@/lib/data';
-    // ...
-    export async function getLeads(): Promise<Lead[]> {
-      return JSON.parse(JSON.stringify(leads));
-    }
-    ```
-
-*   **After (Supabase)**:
-    ```typescript
-    import { supabaseAdmin } from '@/lib/supabase';
-    import type { Lead } from "@/lib/types";
-    
-    export async function getLeads(): Promise<Lead[]> {
-        const { data, error } = await supabaseAdmin.from('leads').select('*');
-
-        if (error) {
-            console.error('Error fetching leads:', error);
-            throw new Error('Could not fetch leads.');
-        }
-
-        // Note: You may need to transform the data to match your `Lead` type exactly.
-        // For example, Supabase returns `id`, your type expects `refId`.
-        return data.map(lead => ({
-            ...lead,
-            refId: lead.id,
-        })) as Lead[];
-    }
-    ```
-You will need to repeat this process for **all functions** in the `src/actions/` directory.
-
-### Step 6: Setting Up Genkit for AI Features
-
-The AI-powered disposition suggestion will work out-of-the-box once your environment is set up.
+The AI-powered disposition suggestion will work once your environment is set up for it.
 
 1.  **Enable the AI API**: Go to the [Google AI Studio](https://aistudio.google.com/) and get an API key.
 2.  **Add API Key to Environment**: Add the following line to your `.env.local` file:
@@ -265,19 +123,17 @@ The AI-powered disposition suggestion will work out-of-the-box once your environ
     GOOGLE_API_KEY="<your-google-ai-api-key>"
     ```
 
-### Step 7: Deploying to Production
+### Step 6: Deploying to Production
 
 A platform like **Vercel** or **Netlify** is recommended for deploying a Next.js app.
 
 1.  **Choose a Hosting Provider**: Vercel is the easiest option as it's made by the creators of Next.js.
 2.  **Import Your Git Repository**: Connect your GitHub, GitLab, or Bitbucket account to your hosting provider and import the project repository.
 3.  **Configure Environment Variables**: In your hosting provider's project settings (e.g., Vercel's "Environment Variables" section), add all the variables from your `.env.local` file:
-    -   `NEXT_PUBLIC_SUPABASE_URL`
-    -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-    -   `SUPABASE_SERVICE_ROLE_KEY`
+    -   `FIREBASE_PROJECT_ID`
+    -   `FIREBASE_CLIENT_EMAIL`
+    -   `FIREBASE_PRIVATE_KEY`
     -   `GOOGLE_API_KEY`
 4.  **Deploy**: Push your code to the `main` branch. The hosting provider will automatically build and deploy your application.
 
-After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready Supabase infrastructure.
-
-    
+After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready Firebase infrastructure.

@@ -1,36 +1,47 @@
 'use server'
 
-import { campaignCustomFields, universalCustomFields } from "@/lib/data";
+import { db } from '@/lib/firebase';
+import type { FieldValue } from 'firebase-admin/firestore';
 
 export interface GeofenceSettings {
     centerLocation: string;
     radius: number;
 }
 
-// Mocked settings data
-let geofenceSettings: GeofenceSettings = {
-    centerLocation: 'Connaught Place, New Delhi',
-    radius: 5000
-};
+async function getSettingsDoc(key: string) {
+    const docRef = db.collection('settings').doc(key);
+    const doc = await docRef.get();
+    return doc;
+}
+
+async function saveSettingsDoc(key: string, value: any) {
+    const docRef = db.collection('settings').doc(key);
+    await docRef.set({ value });
+}
 
 export async function getGeofenceSettings(): Promise<GeofenceSettings> {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return geofenceSettings;
+    const doc = await getSettingsDoc('geofence');
+    if (doc.exists) {
+        return doc.data()?.value as GeofenceSettings;
+    }
+    // Return default if not set
+    return { centerLocation: 'Connaught Place, New Delhi', radius: 5000 };
 }
 
 export async function saveGeofenceSettings(settings: GeofenceSettings): Promise<void> {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    geofenceSettings = settings;
-    console.log("Saved geofence settings:", geofenceSettings);
+    await saveSettingsDoc('geofence', settings);
+    console.log("Saved geofence settings:", settings);
 }
 
-// In a real app, these functions would read from/write to a database
 export async function getUniversalCustomFields(): Promise<string[]> {
-    return universalCustomFields;
+    const doc = await getSettingsDoc('universalCustomFields');
+    return doc.exists ? doc.data()?.value : ['Source', 'Previous Course'];
 }
 
 export async function getCampaignCustomFields(): Promise<Record<string, string[]>> {
-    return campaignCustomFields;
+    const doc = await getSettingsDoc('campaignCustomFields');
+    return doc.exists ? doc.data()?.value : {
+        'Summer Fest 2024': ["Parent's Name", 'Discount Code'],
+        'Diwali Dhamaka': ["Reference ID"],
+    };
 }
