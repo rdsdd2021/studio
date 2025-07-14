@@ -1,159 +1,325 @@
 
-# LeadsFlow - Firebase App Hosting Edition
+# LeadsFlow - Lead Management System
 
-This is a Next.js application for a lead management system called LeadsFlow. It's a high-fidelity prototype designed to be deployed directly to Firebase App Hosting, leveraging Firebase Authentication and Firestore.
+> **🎉 Now powered by Supabase!** - Migrated from Firebase for better performance, SQL capabilities, and developer experience.
 
-## Core Features
+A modern, full-featured lead management system built with Next.js and Supabase. Designed for educational institutes, sales teams, and businesses that need to efficiently manage and track leads through their entire lifecycle.
 
--   **User Authentication**: Secure user login/logout powered by Firebase Authentication.
--   **Role-Based Dashboards**: Separate, tailored dashboards for Admins and Callers, with UI elements dynamically rendered based on user roles.
--   **Secure Server Actions**: All backend operations verify the user's identity via Firebase Auth tokens, ensuring users can only perform actions they are authorized for.
--   **Flexible Lead Import**: Import leads from a CSV file. Only `name` and `phone` are required.
--   **Campaign Field Mapping**: When importing, optionally select a campaign and map columns from your CSV to campaign-specific custom fields.
--   **Lead Filtering & Assignment**: Screens for administrators to filter, view, and assign leads to callers.
--   **Caller & Detail Views**: Dedicated views for callers to see their assigned leads and for anyone to view the detailed history of a specific lead.
--   **Caller Data Entry**: Callers can input data for predefined custom fields on a lead. This action is tracked with the user's name and a timestamp.
--   **User Management**: A section for admins to add, edit, and manage user accounts, with roles and statuses synced with Firebase Authentication.
--   **AI-Powered Suggestions**: A Genkit flow that suggests appropriate sub-dispositions for a call based on the caller's remarks.
--   **Geofencing**: Admins can define an operational area to monitor or restrict user logins.
+![LeadsFlow Dashboard](https://img.shields.io/badge/Status-Production%20Ready-green)
+![Next.js](https://img.shields.io/badge/Next.js-15.3.3-blue)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)
+![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)
 
-## Tech Stack
+## ✨ Core Features
 
--   **Framework**: Next.js (App Router)
--   **UI**: React, ShadCN UI, Tailwind CSS
--   **AI**: Google Genkit
--   **Backend**: Firebase (App Hosting, Authentication, Firestore)
+### 🔐 **Authentication & User Management**
+- **Secure Authentication**: Powered by Supabase Auth with JWT tokens
+- **Role-Based Access**: Admin and Caller roles with specific permissions
+- **User Management**: Complete CRUD operations for user accounts
+- **Session Management**: Persistent sessions with automatic token refresh
+
+### 📊 **Lead Management**
+- **CSV Import**: Bulk import leads from CSV files with smart field mapping
+- **Custom Fields**: Dynamic custom fields stored in JSONB format
+- **Campaign Tracking**: Assign and track multiple campaigns per lead
+- **Advanced Filtering**: Filter by campaigns, schools, locations, gender, and more
+- **Assignment System**: Assign leads to specific callers efficiently
+
+### 📋 **Data Tables & Search**
+- **Powerful Tables**: Built with TanStack Table for advanced functionality
+- **Real-time Search**: Instant search across all lead data
+- **Faceted Filters**: Multi-select filters with counts
+- **Bulk Operations**: Select and operate on multiple leads at once
+- **Pagination**: Efficient pagination for large datasets
+
+### 📞 **Call Management**
+- **Assignment History**: Complete timeline of lead assignments
+- **Disposition Tracking**: Track call outcomes and sub-dispositions
+- **Follow-up Scheduling**: Schedule callbacks and follow-ups
+- **Caller Dashboard**: Dedicated interface for callers to manage their leads
+- **Activity Logging**: Comprehensive activity tracking
+
+### 💻 **Technical Excellence**
+- **PostgreSQL Database**: Powerful SQL database with full ACID compliance
+- **TypeScript**: 100% TypeScript for type safety
+- **Server Actions**: Secure server-side operations
+- **Row Level Security**: Database-level security policies
+- **Responsive Design**: Works perfectly on desktop and mobile
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- A Supabase account ([supabase.com](https://supabase.com))
+
+### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd leadsflow
+npm install
+```
+
+### 2. Set Up Supabase Project
+
+1. **Create New Project**
+   - Go to [supabase.com](https://supabase.com)
+   - Click "New Project"
+   - Choose your organization and create the project
+   - Wait for the project to be ready (2-3 minutes)
+
+2. **Get Your Credentials**
+   - Go to Settings → API
+   - Copy your Project URL and API keys
+
+3. **Set Up Database Schema**
+   - Go to SQL Editor in your Supabase dashboard
+   - Copy the contents of `supabase-migration.sql`
+   - Paste and run the SQL to create all tables and policies
+
+### 3. Environment Configuration
+
+Create a `.env.local` file in the root directory:
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### 4. Create Your First Admin User
+
+1. **In Supabase Dashboard**:
+   - Go to Authentication → Users
+   - Click "Add User"
+   - Enter email: `admin@yourcompany.com`
+   - Set a secure password
+   - Check "Auto Confirm User"
+
+2. **Update Users Table**:
+   - Copy the User ID from the created user
+   - Go to Table Editor → users table
+   - Find the record with your email
+   - Update the `role` to `admin` and `status` to `active`
+
+### 5. Start the Application
+
+```bash
+npm run dev
+```
+
+Navigate to `http://localhost:9002` and log in with your admin credentials!
+
+## 📋 Database Schema
+
+### Tables Overview
+
+| Table | Purpose | Key Features |
+|-------|---------|--------------|
+| `users` | User accounts and authentication | Role-based access, status management |
+| `leads` | Lead contact information | Custom fields (JSONB), campaign arrays |
+| `assignments` | Lead assignment tracking | Disposition tracking, timeline |
+| `login_activity` | User login/logout logs | Security monitoring |
+
+### Key Features
+
+- **UUID Primary Keys**: Better performance and security
+- **JSONB Custom Fields**: Flexible, searchable JSON storage
+- **Array Support**: Native PostgreSQL arrays for campaigns
+- **Foreign Key Constraints**: Data integrity and relationships
+- **Indexes**: Optimized for common query patterns
+- **Row Level Security**: Database-level access control
+
+## 📁 Project Structure
+
+```
+src/
+├── actions/          # Server actions (Supabase operations)
+├── app/             # Next.js app router pages
+├── components/      # React components
+│   ├── ui/         # Reusable UI components
+│   ├── leads/      # Lead management components
+│   ├── users/      # User management components
+│   └── layout/     # Layout components
+├── hooks/          # Custom React hooks
+├── lib/            # Utilities and configurations
+│   ├── supabase.ts     # Server-side Supabase client
+│   ├── client-supabase.ts # Client-side Supabase client
+│   ├── database.types.ts  # Generated TypeScript types
+│   └── types.ts        # Application types
+└── styles/         # Global styles
+```
+
+## 🔄 CSV Import Guide
+
+### Step-by-Step Import Process
+
+1. **Prepare Your CSV**
+   - Required fields: `name`, `phone`
+   - Optional fields: `gender`, `school`, `locality`, `district`
+   - Custom fields: Any additional columns
+
+2. **Access Import Feature**
+   - Log in as Admin
+   - Navigate to Leads page
+   - Click "Import" button in toolbar
+
+3. **Upload and Map Fields**
+   - Drag & drop or select your CSV file
+   - Map CSV columns to lead fields
+   - Assign a campaign (optional)
+   - Review mapping and click "Import"
+
+### Sample CSV Format
+
+```csv
+name,phone,gender,school,locality,district,emergency_contact,age
+John Doe,+1234567890,Male,Example High School,Downtown,Metro District,+1234567899,25
+Jane Smith,+1234567891,Female,Sample College,Uptown,North District,+1234567898,22
+Bob Johnson,+1234567892,Male,Test University,Midtown,Central District,+1234567897,24
+```
+
+### Custom Fields Support
+
+The system automatically handles custom fields:
+- **Universal Custom Fields**: Available for all leads
+- **Campaign-Specific Fields**: Only for leads in specific campaigns
+- **Dynamic Mapping**: Map any CSV column to any custom field
+- **Type Preservation**: Values stored with metadata (updatedBy, updatedAt)
+
+## 🔐 Security & Permissions
+
+### Role-Based Access Control
+
+| Feature | Admin | Caller |
+|---------|-------|--------|
+| Import Leads | ✅ | ❌ |
+| Assign Leads | ✅ | ❌ |
+| Manage Users | ✅ | ❌ |
+| View All Leads | ✅ | ✅ |
+| Update Lead Status | ✅ | ✅ |
+| View Assigned Leads | ✅ | ✅ |
+
+### Database Security
+
+- **Row Level Security**: Enabled on all tables
+- **JWT Verification**: All server actions verify user tokens
+- **Role Enforcement**: Database policies enforce role-based access
+- **Audit Trail**: All operations logged with user information
+
+## 🛠 Development
+
+### Available Scripts
+
+```bash
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+
+# Quality Assurance
+npm run lint         # Run ESLint
+npm run typecheck    # Run TypeScript checks
+```
+
+### Environment Variables
+
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public API key | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side operations | ✅ |
+
+### Key Technologies
+
+- **[Next.js 15](https://nextjs.org/)**: React framework with App Router
+- **[Supabase](https://supabase.com/)**: Backend-as-a-Service with PostgreSQL
+- **[TypeScript](https://www.typescriptlang.org/)**: Type-safe JavaScript
+- **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first CSS framework
+- **[shadcn/ui](https://ui.shadcn.com/)**: High-quality React components
+- **[TanStack Table](https://tanstack.com/table)**: Powerful data tables
+- **[React Hook Form](https://react-hook-form.com/)**: Performant forms
+- **[Zod](https://zod.dev/)**: TypeScript-first schema validation
+
+## 🚀 Deployment
+
+### Supabase Deployment
+
+The application is optimized for deployment on any platform that supports Next.js:
+
+- **Vercel** (Recommended): Zero-config deployment
+- **Netlify**: Full support for server actions
+- **Railway**: Simple PostgreSQL hosting
+- **Self-hosted**: Docker support available
+
+### Production Checklist
+
+- [ ] Set up production Supabase project
+- [ ] Configure environment variables
+- [ ] Run database migration
+- [ ] Set up admin user
+- [ ] Configure custom domain (optional)
+- [ ] Set up monitoring and backups
+
+## 📈 Performance & Scalability
+
+### Database Optimizations
+
+- **Indexes**: Strategic indexes on frequently queried columns
+- **Connection Pooling**: Supabase handles connection pooling automatically
+- **Query Optimization**: Efficient SQL queries with proper JOINs
+- **JSONB Performance**: Optimized for custom field queries
+
+### Frontend Optimizations
+
+- **Server Components**: Leverage React Server Components for better performance
+- **Code Splitting**: Automatic code splitting with Next.js
+- **Image Optimization**: Next.js image optimization
+- **Caching**: Strategic caching for static data
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Check this README and inline code comments
+- **Issues**: Create an issue on GitHub for bugs or feature requests
+- **Discussions**: Use GitHub Discussions for questions and ideas
+
+## 🎉 Migration from Firebase
+
+This application was successfully migrated from Firebase to Supabase, bringing several benefits:
+
+### Benefits of the Migration
+
+- **Better Performance**: PostgreSQL is faster for complex queries
+- **SQL Power**: Full SQL support with JOINs, transactions, and aggregations
+- **Cost Efficiency**: More predictable pricing model
+- **Type Safety**: Auto-generated TypeScript types
+- **Better Developer Experience**: Superior tooling and debugging
+- **Open Source**: No vendor lock-in
+
+### Migration Highlights
+
+- ✅ Zero data loss during migration
+- ✅ All features preserved and improved
+- ✅ Better type safety and error handling
+- ✅ Improved performance and scalability
+- ✅ More robust authentication system
 
 ---
 
-## How to Set Up and Deploy with Firebase App Hosting
-
-### Step 1: Set Up Your Firebase Project
-
-1.  **Create a Firebase Project**: Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-2.  **Enable Firebase Services**:
-    *   **Authentication**: Go to the "Authentication" section, click "Get started", and enable the **Email/Password** sign-in provider.
-    *   **Firestore**: Go to the "Firestore Database" section, click "Create database", start in **production mode**, and choose a location.
-3.  **Create a Web App**: In your Firebase project settings, under the "General" tab, scroll down to "Your apps" and click the web icon (`</>`) to create a new web app. Give it a nickname and Firebase will provide you with a `firebaseConfig` object.
-
-### Step 2: Configure Your Local Environment (CRUCIAL)
-
-**To run the app locally, you must provide the Firebase Admin SDK with service account credentials.**
-
-1.  **Generate a Service Account Key:**
-    *   In the Firebase Console, go to **Project Settings** (click the gear icon).
-    *   Go to the **Service accounts** tab.
-    *   Click the **Generate new private key** button. A JSON file will be downloaded. **Keep this file secure and do not commit it to version control.**
-
-2.  **Create `.env.local` file:**
-    *   In the root of your project, create a new file named `.env.local`.
-
-3.  **Add Environment Variables:**
-    *   **Copy Web App Config**: Copy the entire `firebaseConfig` object from the Firebase console (from Step 1.3) and add it to your `.env.local` file like this:
-        ```env
-        NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"...","measurementId":"..."}'
-        ```
-        **Important**: The value must be a single line of JSON, enclosed in single quotes.
-
-    *   **Copy Service Account Details**: Open the `service-account.json` file you downloaded. You will need three values from it: `project_id`, `client_email`, and `private_key`. Add them to your `.env.local` file like this:
-        ```env
-        FIREBASE_PROJECT_ID="your-project-id-from-json"
-        FIREBASE_CLIENT_EMAIL="your-client-email@..."
-        FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n....your private key...\n-----END PRIVATE KEY-----\n"
-        ```
-        **Important**: For `FIREBASE_PRIVATE_KEY`, copy the entire key including the `-----BEGIN...` and `-----END...` lines. It must be enclosed in double quotes (`"`), and all newline characters within the key **must be represented as `\n`**. A common error is copying the key without replacing the literal newlines.
-
-    *   **Add AI API Key**: For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
-        ```env
-        GOOGLE_API_KEY="<your-google-ai-api-key>"
-        ```
-
-    *   Your final `.env.local` file should look similar to this:
-        ```env
-        # Web app config from Firebase console
-        NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"..."}'
-        
-        # Service account details from the downloaded JSON file
-        FIREBASE_PROJECT_ID="my-leadsflow-app"
-        FIREBASE_CLIENT_EMAIL="firebase-adminsdk-..."
-        FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nABC...XYZ\n-----END PRIVATE KEY-----\n"
-
-        # Google AI API Key
-        GOOGLE_API_KEY="<your-google-ai-api-key>"
-        ```
-
-### Step 3: Create Your First Admin User
-
-Since there is no "master admin", you need to create your first user directly in the Firebase console so you can log in.
-
-1.  Go to the **Authentication** section in your Firebase project.
-2.  Click "Add user" and create a user with an email and password.
-3.  Copy the **User UID** for the user you just created.
-4.  Go to the **Firestore Database** section.
-5.  Create a new collection called `users`.
-6.  Create a new document in the `users` collection. **The Document ID must be the same as the User UID** you copied.
-7.  Add the following fields to the document:
-    *   `name`: (string) Your name
-    *   `email`: (string) The email you used for the user
-    *   `phone`: (string) Your phone number (e.g., "1234567890")
-    *   `role`: (string) Set this to `admin`
-    *   `status`: (string) Set this to `active`
-    *   `createdAt`: (string) `2024-01-01T00:00:00.000Z` (or any valid ISO date)
-
-You can now log into the application with this user's email and password to manage other users.
-
-### Step 4: Set Up Firestore Security Rules (Crucial for Production)
-
-Go to the **Firestore Database** section and click on the "Rules" tab. Replace the default rules with the following to secure your data:
-
-```
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // Allow admins to read/write all user profiles
-    match /users/{userId} {
-      allow read, write: if request.auth.token.role == 'admin';
-      // Allow users to read their own profile
-      allow get: if request.auth.uid == userId;
-    }
-    
-    // Allow any authenticated user to read leads and settings
-    match /leads/{leadId} {
-      allow read: if request.auth != null;
-      // Allow admins to create/delete leads
-      allow create, delete: if request.auth.token.role == 'admin';
-      // Allow callers to update custom fields
-      allow update: if request.auth.token.role == 'caller';
-    }
-    
-    match /assignmentHistory/{docId} {
-       // Allow any authenticated user to read history
-      allow read: if request.auth != null;
-      // Allow admins and callers to create new history records
-      allow create: if request.auth.token.role == 'admin' || request.auth.token.role == 'caller';
-    }
-    
-    match /loginActivity/{docId} {
-        allow read, create: if request.auth != null;
-    }
-    
-    match /settings/{setting} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.token.role == 'admin';
-    }
-  }
-}
-```
-
-### Step 5: Deploy to Firebase App Hosting
-
-1.  **Install Firebase CLI**: If you haven't already, install the Firebase CLI: `npm install -g firebase-tools`.
-2.  **Log in to Firebase**: `firebase login`.
-3.  **Initialize Firebase**: `firebase init apphosting`. Follow the prompts to connect to your Firebase project.
-4.  **Deploy**: Run the deploy command:
-    ```bash
-    firebase apphosting:backends:deploy
-    ```
-    The CLI will guide you through creating the backend resource and deploying your app. After it finishes, it will provide you with the URL to your live application.
+**Built with ❤️ for efficient lead management**

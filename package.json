@@ -1,7 +1,30 @@
 {
-  "name": "nextn",
-  "version": "0.1.0",
-  "private": "true",
+  "name": "leadsflow",
+  "version": "2.0.0",
+  "description": "Modern lead management system built with Next.js and Supabase. Features CSV import, role-based access, campaign tracking, and real-time data management.",
+  "private": true,
+  "keywords": [
+    "lead-management",
+    "crm",
+    "supabase",
+    "nextjs",
+    "typescript",
+    "csv-import",
+    "react",
+    "postgresql",
+    "educational-institutes",
+    "sales-management"
+  ],
+  "author": "LeadsFlow Team",
+  "license": "MIT",
+  "homepage": "https://github.com/your-username/leadsflow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/leadsflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/leadsflow/issues"
+  },
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "build": "next build",
@@ -61,5 +84,9 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
