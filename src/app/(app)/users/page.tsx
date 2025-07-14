@@ -63,7 +63,7 @@ export default function UsersPage() {
           </Button>
         </div>
         {data ? (
-          <DataTable columns={columns} data={data} />
+          <DataTable columns={columns} data={data} showToolbar={false} />
         ) : (
           <div className="rounded-md border">
             <div className="p-4 space-y-4">
