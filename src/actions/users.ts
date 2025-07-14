@@ -19,7 +19,7 @@ async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): P
     const user = { id: userDoc.id, ...userDoc.data() } as User;
 
     if (requiredRole && user.role !== requiredRole) {
-        throw new Error(`Unauthorized: User does not have the required role ('${required_role}').`);
+        throw new Error(`Unauthorized: User does not have the required role ('${requiredRole}').`);
     }
 
     if (user.status !== 'active') {
@@ -34,10 +34,7 @@ async function getVerifiedAdmin(idToken: string): Promise<User> {
 }
 
 export async function getUsers(): Promise<User[]> {
-    if (!db) {
-        console.warn('DB not configured, returning empty list for users.');
-        return [];
-    }
+    if (!db) throw new Error("Database not configured.");
     const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
     if (snapshot.empty) {
         return [];
@@ -46,10 +43,7 @@ export async function getUsers(): Promise<User[]> {
 }
 
 export async function getLoginActivity(): Promise<LoginActivity[]> {
-    if (!db) {
-        console.warn('DB not configured, returning empty list for login activity.');
-        return [];
-    }
+    if (!db) throw new Error("Database not configured.");
     const snapshot = await db.collection('loginActivity').orderBy('timestamp', 'desc').get();
     if (snapshot.empty) {
         return [];
@@ -78,7 +72,7 @@ export async function updateUser(userId: string, data: Partial<Omit<User, 'id' |
   return { id: updatedDoc.id, ...updatedDoc.data() } as User;
 }
 
-export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status' | 'password'>): Promise<User> {
+export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status' | 'password'> & {password: string}): Promise<User> {
     const idToken = headers().get('Authorization')?.split('Bearer ')[1];
     if (!idToken || !db || !auth) throw new Error("Authentication required.");
     await getVerifiedAdmin(idToken);

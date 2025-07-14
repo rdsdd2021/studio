@@ -38,7 +38,7 @@ async function getSettingsDoc(key: string) {
 }
 
 async function saveSettingsDoc(key: string, value: any) {
-    if (!db) { throw new Error("Database not configured."); }
+    if (!db || !auth) { throw new Error("Database not configured."); }
     await verifyAdmin();
     const docRef = db.collection('settings').doc(key);
     await docRef.set({ value });
@@ -119,7 +119,7 @@ export async function getCampaignDispositions(): Promise<Record<string, Disposit
     };
 }
 
-export async function saveCampaignDispositions(dispositions: Record<string, Disposition[]>, adminUserId: string): Promise<void> {
+export async function saveCampaignDispositions(dispositions: Record<string, Disposition[]>): Promise<void> {
     await saveSettingsDoc('campaignDispositions', dispositions);
 }
 

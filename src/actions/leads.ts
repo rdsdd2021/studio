@@ -31,10 +31,7 @@ async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): P
 
 
 export async function getLeads(): Promise<Lead[]> {
-  if (!db) {
-    console.warn('DB not configured, returning empty list for leads.');
-    return [];
-  }
+  if (!db) throw new Error("Database not configured.");
   const snapshot = await db.collection('leads').orderBy('createdAt', 'desc').get();
   if (snapshot.empty) {
     return [];
@@ -43,10 +40,7 @@ export async function getLeads(): Promise<Lead[]> {
 }
 
 export async function getAssignments(): Promise<Assignment[]> {
-    if (!db) {
-        console.warn('DB not configured, returning empty list for assignments.');
-        return [];
-    }
+    if (!db) throw new Error("Database not configured.");
     const snapshot = await db.collection('assignmentHistory').orderBy('assignedTime', 'desc').get();
     if (snapshot.empty) {
       return [];
@@ -55,10 +49,7 @@ export async function getAssignments(): Promise<Assignment[]> {
 }
 
 export async function getLeadDetails(id: string): Promise<Lead | undefined> {
-  if (!db) {
-    console.warn('DB not configured, returning undefined for lead details.');
-    return undefined;
-  }
+  if (!db) throw new Error("Database not configured.");
   const doc = await db.collection('leads').doc(id).get();
   if (!doc.exists) {
     return undefined;
@@ -67,10 +58,7 @@ export async function getLeadDetails(id: string): Promise<Lead | undefined> {
 }
 
 export async function getAssignmentHistory(leadId: string): Promise<Assignment[]> {
-    if (!db) {
-        console.warn('DB not configured, returning empty list for assignment history.');
-        return [];
-    }
+    if (!db) throw new Error("Database not configured.");
   const snapshot = await db.collection('assignmentHistory')
     .where('mainDataRefId', '==', leadId)
     .orderBy('assignedTime', 'desc')
@@ -90,7 +78,7 @@ export async function addAssignment(
   followUpDate?: Date,
   scheduleDate?: Date
 ): Promise<Assignment> {
-    if (!db) { throw new Error("Database not configured."); }
+    if (!db || !auth) throw new Error("Database not configured.");
     const idToken = headers().get('Authorization')?.split('Bearer ')[1];
     if (!idToken) throw new Error("Authentication required.");
 
@@ -117,7 +105,7 @@ export async function addAssignment(
 }
 
 export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
-    if (!db) { throw new Error("Database not configured."); }
+    if (!db || !auth) throw new Error("Database not configured.");
 
     const idToken = headers().get('Authorization')?.split('Bearer ')[1];
     if (!idToken) throw new Error("Authentication required.");
@@ -158,7 +146,7 @@ export async function importLeads(
   newLeads: Partial<Lead>[],
   campaign?: string
 ): Promise<{ count: number }> {
-    if (!db) { throw new Error("Database not configured."); }
+    if (!db || !auth) throw new Error("Database not configured.");
     
     const idToken = headers().get('Authorization')?.split('Bearer ')[1];
     if (!idToken) throw new Error("Authentication required.");
@@ -189,7 +177,7 @@ export async function importLeads(
 
 
 export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
-    if (!db) { throw new Error("Database not configured."); }
+    if (!db || !auth) throw new Error("Database not configured.");
 
     const idToken = headers().get('Authorization')?.split('Bearer ')[1];
     if (!idToken) throw new Error("Authentication required.");
@@ -210,7 +198,7 @@ export async function addCampaignToLeads(leadIds: string[], campaign: string): P
 }
 
 export async function updateLeadCustomField(leadId: string, fieldName: string, value: string): Promise<Lead> {
-    if (!db) { throw new Error("Database not configured."); }
+    if (!db || !auth) throw new Error("Database not configured.");
     
     const idToken = headers().get('Authorization')?.split('Bearer ')[1];
     if (!idToken) throw new Error("Authentication required.");
