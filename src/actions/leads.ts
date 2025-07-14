@@ -72,6 +72,11 @@ export async function addAssignment(
     }
     const user = userDoc.data();
 
+    // Authorization Check
+    if (user?.role !== 'caller') {
+        throw new Error("Only callers can add dispositions.");
+    }
+
     const now = new Date();
     const newAssignmentData = {
         mainDataRefId: leadId,
@@ -92,13 +97,23 @@ export async function addAssignment(
     return { id: docRef.id, ...newAssignmentData } as Assignment;
 }
 
-export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
+export async function assignLeads(leadIds: string[], userId: string, adminUserId: string): Promise<Assignment[]> {
     if (!db) { throw new Error("Database not configured."); }
+
+    // Authorization check
+    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
+    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
+        throw new Error("Unauthorized: Only admins can assign leads.");
+    }
+
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
-        throw new Error("User not found");
+        throw new Error("User to assign to not found");
     }
     const user = userDoc.data();
+    if (user?.role !== 'caller') {
+        throw new Error("Leads can only be assigned to callers.");
+    }
 
     const now = new Date();
     const newAssignments: Assignment[] = [];
@@ -124,9 +139,15 @@ export async function assignLeads(leadIds: string[], userId: string): Promise<As
 
 export async function importLeads(
   newLeads: Partial<Lead>[],
+  adminUserId: string,
   campaign?: string
 ): Promise<{ count: number }> {
     if (!db) { throw new Error("Database not configured."); }
+    // Authorization check
+    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
+    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
+        throw new Error("Unauthorized: Only admins can import leads.");
+    }
     const now = new Date().toISOString();
     const batch = db.batch();
     
@@ -151,8 +172,15 @@ export async function importLeads(
 }
 
 
-export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
+export async function addCampaignToLeads(leadIds: string[], campaign: string, adminUserId: string): Promise<{ count: number }> {
     if (!db) { throw new Error("Database not configured."); }
+
+    // Authorization check
+    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
+    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
+        throw new Error("Unauthorized: Only admins can add campaign tags.");
+    }
+
     const { firestore } = await import('firebase-admin/firestore');
     const batch = db.batch();
     
@@ -176,6 +204,9 @@ export async function updateLeadCustomField(leadId: string, fieldName: string, v
         throw new Error("User not found");
     }
     const user = userDoc.data();
+    if (user?.role !== 'caller') {
+        throw new Error("Only callers can update custom fields.");
+    }
 
     const fieldData = {
         value,
@@ -183,7 +214,6 @@ export async function updateLeadCustomField(leadId: string, fieldName: string, v
         updatedAt: new Date().toISOString()
     };
     
-    // Use dot notation to update a specific field within the customFields map
     await leadRef.update({
         [`customFields.${fieldName}`]: fieldData
     });

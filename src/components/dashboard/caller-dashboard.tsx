@@ -1,4 +1,5 @@
-import type { Assignment, Lead } from '@/lib/types';
+
+import type { Assignment, Lead, User } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DispositionChart } from '@/components/dashboard/disposition-chart';
 import { Button } from '../ui/button';
@@ -7,16 +8,16 @@ import { ArrowRight, CalendarClock, PhoneOutgoing } from 'lucide-react';
 import { format, isToday, isFuture } from 'date-fns';
 
 interface CallerDashboardProps {
-    userId: string;
-    leads: Lead[];
-    assignments: Assignment[];
+    currentUser: User;
+    allLeads: Lead[];
+    allAssignments: Assignment[];
 }
 
-export function CallerDashboard({ userId, leads, assignments }: CallerDashboardProps) {
+export function CallerDashboard({ currentUser, allLeads, allAssignments }: CallerDashboardProps) {
 
-    const myAssignments = assignments.filter(a => a.userId === userId);
+    const myAssignments = allAssignments.filter(a => a.userId === currentUser.id);
     const myLeadIds = new Set(myAssignments.map(a => a.mainDataRefId));
-    const myLeads = leads.filter(l => myLeadIds.has(l.refId));
+    const myLeads = allLeads.filter(l => myLeadIds.has(l.refId));
 
     const latestAssignments = new Map<string, Assignment>();
     myAssignments.forEach(assignment => {

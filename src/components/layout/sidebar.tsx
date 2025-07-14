@@ -1,14 +1,29 @@
+
 'use client'
 
+import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LeadsFlowLogo } from "@/components/icons"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { navItems } from "@/lib/nav-items"
+import { getNavItems } from "@/lib/nav-items"
+import type { User } from "@/lib/types"
+import { getCurrentUser } from "@/lib/auth" // Client-side auth fetcher
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = React.useState<User | undefined>(undefined);
+
+  React.useEffect(() => {
+    async function fetchUser() {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    }
+    fetchUser();
+  }, []);
+
+  const navItems = getNavItems(currentUser?.role || 'caller');
 
   return (
     <aside className="hidden w-16 flex-col border-r bg-card sm:flex">

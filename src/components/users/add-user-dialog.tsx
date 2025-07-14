@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -32,6 +33,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { addUser } from '@/actions/users'
+import type { User } from '@/lib/types'
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -44,11 +46,13 @@ const FormSchema = z.object({
 interface AddUserDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
+  currentUser: User;
 }
 
 export function AddUserDialog({
   isOpen,
   onOpenChange,
+  currentUser,
 }: AddUserDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -64,7 +68,7 @@ export function AddUserDialog({
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true)
     try {
-      await addUser(data)
+      await addUser(data, currentUser.id)
       toast({
         title: 'User Added!',
         description: `${data.name} has been added and is pending approval.`,
@@ -72,10 +76,10 @@ export function AddUserDialog({
       onOpenChange(false)
       form.reset()
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Failed to Add User',
-        description: 'Could not add the new user. Please try again.',
+        description: error.message || 'Could not add the new user. Please try again.',
         variant: 'destructive',
       })
     } finally {

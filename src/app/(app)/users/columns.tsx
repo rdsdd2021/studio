@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -22,14 +23,18 @@ import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
 
-const UserActions = ({ user }: { user: User }) => {
+const UserActions = ({ user, currentUser }: { user: User, currentUser?: User }) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
+  if (!currentUser || currentUser.role !== 'admin') {
+    return null;
+  }
+
   const handleToggle = async () => {
     try {
-      await toggleUserStatus(user.id);
+      await toggleUserStatus(user.id, currentUser.id);
       toast({
         title: `User ${user.status === 'active' ? 'Deactivated' : 'Activated'}`,
         description: `${user.name} has been successfully ${user.status === 'active' ? 'deactivated' : 'activated'}.`,
@@ -46,7 +51,7 @@ const UserActions = ({ user }: { user: User }) => {
 
   const handleApprove = async () => {
     try {
-      await approveUser(user.id);
+      await approveUser(user.id, currentUser.id);
        toast({
         title: "User Approved",
         description: `${user.name} has been approved and is now active.`,
@@ -67,6 +72,7 @@ const UserActions = ({ user }: { user: User }) => {
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         user={user}
+        currentUser={currentUser}
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -196,6 +202,9 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <UserActions user={row.original} />,
+    cell: ({ row, table }) => {
+      const { currentUser } = table.options.meta as { currentUser?: User };
+      return <UserActions user={row.original} currentUser={currentUser} />;
+    },
   },
 ]

@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from "react"
@@ -25,16 +26,40 @@ import {
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { LeadsFlowLogo } from "../icons"
-import { navItems } from "@/lib/nav-items"
+import { getNavItems } from "@/lib/nav-items"
+import type { User } from "@/lib/types"
+import { getCurrentUser } from "@/lib/auth" // Client-side auth fetcher
+
+function NavLinks({ userRole }: { userRole: User['role'] }) {
+  const navItems = getNavItems(userRole);
+  return (
+    <>
+      {navItems.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          {item.label}
+        </Link>
+      ))}
+    </>
+  );
+}
 
 export function Header() {
-  // In a real app, this would come from an auth context.
-  // For now, we mock a user to prevent build errors.
-  const currentUser = {
-    name: 'Admin User',
-    avatar: 'https://placehold.co/32x32.png',
-  };
+  const [currentUser, setCurrentUser] = React.useState<User | undefined>(undefined);
+
+  React.useEffect(() => {
+    async function fetchUser() {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    }
+    fetchUser();
+  }, []);
+
   const nameFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
+  const userRole = currentUser?.role || 'caller'; // Default to least privileged role
 
   return (
     <>
@@ -62,15 +87,7 @@ export function Header() {
                   <LeadsFlowLogo className="h-5 w-5 transition-all group-hover:scale-110" />
                   <span className="sr-only">LeadsFlow</span>
                 </Link>
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                <NavLinks userRole={userRole} />
               </nav>
             </SheetContent>
           </Sheet>
@@ -92,7 +109,7 @@ export function Header() {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{currentUser?.name || 'User'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {currentUser ? `${currentUser.name.toLowerCase().replace(' ', '')}@leadsflow.com` : ''}
+                  {currentUser?.email}
                 </p>
               </div>
             </DropdownMenuLabel>

@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -16,17 +17,20 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { addCampaignToLeads } from '@/actions/leads'
 import { Tag } from 'lucide-react'
+import type { User } from '@/lib/types'
 
 interface AddCampaignDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   leadIds: string[]
+  currentUser: User;
 }
 
 export function AddCampaignDialog({
   isOpen,
   onOpenChange,
   leadIds,
+  currentUser,
 }: AddCampaignDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -45,19 +49,18 @@ export function AddCampaignDialog({
 
     setIsSubmitting(true)
     try {
-      await addCampaignToLeads(leadIds, campaign)
+      await addCampaignToLeads(leadIds, campaign, currentUser.id)
       toast({
         title: 'Campaign Tag Added!',
         description: `The campaign tag has been added to ${leadIds.length} lead(s).`,
       })
       onOpenChange(false)
       setCampaign('')
-      // A full refresh may be needed to clear selections and states
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Update Failed',
-        description: 'Could not add campaign tag. Please try again.',
+        description: error.message || 'Could not add campaign tag. Please try again.',
         variant: 'destructive',
       })
     } finally {
@@ -65,7 +68,6 @@ export function AddCampaignDialog({
     }
   }
 
-  // Reset campaign input when dialog is reopened with new lead selection
   React.useEffect(() => {
     if(isOpen) {
       setCampaign('');

@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -42,12 +43,14 @@ interface AssignLeadsDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   leadIds: string[]
+  currentUser: User;
 }
 
 export function AssignLeadsDialog({
   isOpen,
   onOpenChange,
   leadIds,
+  currentUser
 }: AssignLeadsDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -77,19 +80,18 @@ export function AssignLeadsDialog({
 
     setIsSubmitting(true)
     try {
-      await assignLeads(leadIds, data.userId)
+      await assignLeads(leadIds, data.userId, currentUser.id)
       toast({
         title: 'Leads Assigned!',
         description: `${leadIds.length} lead(s) have been assigned successfully.`,
       })
       onOpenChange(false)
       form.reset();
-      // Wait a bit for the toast to show before refreshing the page
       window.location.reload()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Assignment Failed',
-        description: 'Could not assign leads. Please try again.',
+        description: error.message || 'Could not assign leads. Please try again.',
         variant: 'destructive',
       })
     } finally {

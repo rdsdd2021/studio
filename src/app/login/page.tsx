@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -9,66 +10,37 @@ import { Label } from "@/components/ui/label"
 import { LeadsFlowLogo } from '@/components/icons'
 import { useRouter } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { getUsers } from '@/actions/users'
-import type { User } from '@/lib/types'
+import { attemptLogin } from '@/actions/users'
+
+// In a real production app, you would manage this session state more robustly (e.g., using cookies, context, or a library).
+// For this prototype, we'll use localStorage to simulate a logged-in user session.
+function setSimulatedUserSession(userId: string) {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('currentUser', userId);
+    }
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = React.useState('admin@leadsflow.com');
-  const [password, setPassword] = React.useState('password123');
+  const [password, setPassword] = React.useState('password123'); // Password is not checked in this prototype
   const [error, setError] = React.useState<string | null>(null);
-  const [users, setUsers] = React.useState<User[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  React.useEffect(() => {
-    const fetchUsersData = async () => {
-      try {
-        const fetchedUsers = await getUsers();
-        setUsers(fetchedUsers);
-      } catch (e) {
-        setError('Could not fetch user data. Please try again later.')
-      }
-    }
-    fetchUsersData();
-  }, [])
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
 
-    // This is a mock authentication check.
-    // In a real app, you would make an API call to your backend.
+    const result = await attemptLogin(email);
+
+    if (result.success && result.user) {
+        setSimulatedUserSession(result.user.id);
+        router.push(`/dashboard`);
+    } else {
+        setError(result.message);
+    }
     
-    // Find the user by email
-    const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-
-    if (!user) {
-        setError("Invalid email or password.");
-        setIsSubmitting(false);
-        return;
-    }
-
-    // In a real app, you would verify the password hash here.
-    // For this prototype, we'll just check the user status.
-
-    switch(user.status) {
-        case 'pending':
-            setError("Your account is awaiting admin approval. Please check back later.");
-            break;
-        case 'inactive':
-            setError("Your account has been deactivated. Please contact an administrator.");
-            break;
-        case 'active':
-            // In a real app, you'd also record the login event here and set a session cookie.
-            // For now, we'll just redirect. We can pass the user role for the dashboard to pick up.
-            // A better way in a real app would be to store the session info in a context provider.
-            router.push(`/dashboard`);
-            break;
-        default:
-            setError("An unknown error occurred. Please try again.");
-    }
     setIsSubmitting(false);
   };
 

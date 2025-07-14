@@ -1,25 +1,15 @@
 
 import { getLeads, getAssignments } from '@/actions/leads';
-import { getUsers } from '@/actions/users';
-import { Lead, Assignment, User } from '@/lib/types';
+import type { Assignment, User } from '@/lib/types';
 import { DataTable } from '@/components/leads/data-table';
 import { columns } from '@/components/leads/columns';
-
-// In a real application, you would get the current user from an authentication session.
-// For this prototype, we'll simulate a logged-in caller to demonstrate functionality.
-async function getSimulatedCurrentUser(): Promise<User | undefined> {
-    const users = await getUsers();
-    // Find the first active caller to simulate being logged in as them.
-    return users.find(u => u.role === 'caller' && u.status === 'active');
-}
-
+import { getCurrentUser } from '@/lib/auth';
 
 export default async function MyLeadsPage() {
   const allLeads = await getLeads();
   const allAssignments = await getAssignments();
 
-  // Mocking current user by finding the first active caller.
-  const currentUser = await getSimulatedCurrentUser();
+  const currentUser = await getCurrentUser();
 
   // Get the latest assignment for each lead
   const latestAssignments = new Map<string, Assignment>();
@@ -61,6 +51,7 @@ export default async function MyLeadsPage() {
         columns={columns} 
         data={data}
         showToolbar={false}
+        currentUser={currentUser}
       />
     </div>
   )

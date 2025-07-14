@@ -25,7 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { importLeads } from '@/actions/leads'
 import { getCampaignCustomFields, getUniversalCustomFields } from '@/actions/settings'
-import type { Lead } from '@/lib/types'
+import type { Lead, User } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Lightbulb, FileQuestion, Map, Download } from 'lucide-react'
 
@@ -33,6 +33,7 @@ import { Lightbulb, FileQuestion, Map, Download } from 'lucide-react'
 interface ImportLeadsDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
+  currentUser: User;
 }
 
 const requiredFields = ['name', 'phone'];
@@ -42,6 +43,7 @@ const DO_NOT_MAP_VALUE = '__do_not_map__';
 export function ImportLeadsDialog({
   isOpen,
   onOpenChange,
+  currentUser,
 }: ImportLeadsDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -168,17 +170,17 @@ export function ImportLeadsDialog({
         });
 
         try {
-          await importLeads(leadsToImport, selectedCampaign);
+          await importLeads(leadsToImport, currentUser.id, selectedCampaign);
           toast({
             title: 'Import Successful!',
             description: `${leadsToImport.length} leads have been imported.`,
           });
           handleDialogClose(false);
           router.refresh();
-        } catch (error) {
+        } catch (error: any) {
           toast({
             title: 'Import Failed',
-            description: 'An error occurred during import. Please try again.',
+            description: error.message || 'An error occurred during import. Please try again.',
             variant: 'destructive',
           });
         } finally {

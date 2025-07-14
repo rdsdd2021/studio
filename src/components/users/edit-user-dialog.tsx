@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -30,7 +31,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
 import { updateUser } from '@/actions/users'
 import type { User } from '@/lib/types'
@@ -48,12 +48,14 @@ interface EditUserDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   user: User
+  currentUser: User;
 }
 
 export function EditUserDialog({
   isOpen,
   onOpenChange,
   user,
+  currentUser
 }: EditUserDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -85,17 +87,17 @@ export function EditUserDialog({
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true)
     try {
-      await updateUser(user.id, data)
+      await updateUser(user.id, data, currentUser.id)
       toast({
         title: 'User Updated!',
         description: `Details for ${data.name} have been updated successfully.`,
       })
       onOpenChange(false)
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Update Failed',
-        description: 'Could not update user. Please try again.',
+        description: error.message || 'Could not update user. Please try again.',
         variant: 'destructive',
       })
     } finally {

@@ -1,22 +1,15 @@
+
 import { getLeadDetails, getAssignmentHistory, getLeads, getAssignments } from '@/actions/leads';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AssignmentHistory } from '@/components/leads/assignment-history';
 import { UpdateDispositionForm } from '@/components/leads/update-disposition-form';
 import { User, Phone, School, MapPin, Milestone, Calendar, Info, Pencil, UserCircle, CalendarDays } from 'lucide-react';
-import type { Assignment, Lead, User as UserType } from '@/lib/types';
+import type { Assignment, Lead } from '@/lib/types';
 import { LeadDetailHeader } from '@/components/leads/lead-detail-header';
 import { getUniversalCustomFields, getCampaignCustomFields } from '@/actions/settings';
 import { UpdateCustomFieldForm } from '@/components/leads/update-custom-field-form';
-import { getUsers } from '@/actions/users';
-
-// In a real application, you would get the current user from an authentication session.
-// For this prototype, we'll simulate a logged-in caller to demonstrate functionality.
-async function getSimulatedCurrentUser(): Promise<UserType | undefined> {
-    const users = await getUsers();
-    // Find the first active caller to simulate being logged in as them.
-    return users.find(u => u.role === 'caller' && u.status === 'active');
-}
+import { getCurrentUser } from '@/lib/auth';
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const lead = await getLeadDetails(params.id);
@@ -25,9 +18,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   }
 
   const history = await getAssignmentHistory(params.id);
-  
-  // Simulate getting the current user from session.
-  const currentUser = await getSimulatedCurrentUser();
+  const currentUser = await getCurrentUser();
   
   // To find the next lead, we need the full list of "My Leads"
   const allLeads = await getLeads();
@@ -144,7 +135,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                           <Info className="h-4 w-4" />
                           {fieldName}
                         </label>
-                        {isEditable ? (
+                        {isEditable && currentUser ? (
                            <UpdateCustomFieldForm 
                               leadId={lead.refId}
                               fieldName={fieldName}
