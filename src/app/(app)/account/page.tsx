@@ -43,14 +43,24 @@ import { updateUser } from '@/actions/users'
 import type { Disposition, SubDisposition, User } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Tag, Trash2, X } from 'lucide-react';
-import { getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings, getCampaignCustomFields, getUniversalCustomFields } from '@/actions/settings';
+import { PlusCircle, Tag, Trash2, X, Save } from 'lucide-react';
+import { 
+  getGeofenceSettings, saveGeofenceSettings, type GeofenceSettings, 
+  getCampaignCustomFields, getUniversalCustomFields,
+  saveUniversalCustomFields, saveCampaignCustomFields,
+  getGlobalDispositions, saveGlobalDispositions,
+  getGlobalSubDispositions, saveGlobalSubDispositions,
+  getCampaignDispositions, saveCampaignDispositions,
+  getCampaignSubDispositions, saveCampaignSubDispositions,
+} from '@/actions/settings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { getCurrentUser } from '@/lib/auth';
 
 const ProfileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
+  email: z.string().email(),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
 })
 
@@ -59,11 +69,7 @@ const GeofenceFormSchema = z.object({
     radius: z.coerce.number().min(1, { message: "Radius must be at least 1." })
 })
 
-// MOCK DATA - In a real app this would come from a database or a global context
-const mockUser: User = { id: 'usr_1', name: 'Admin User', phone: '1234567890', role: 'admin', status: 'active', createdAt: new Date().toISOString(), avatar: `https://placehold.co/32x32.png` };
-
-
-function GeofenceSettingsForm({ settings }: { settings: GeofenceSettings }) {
+function GeofenceSettingsForm({ settings, currentUser }: { settings: GeofenceSettings, currentUser: User }) {
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -79,7 +85,7 @@ function GeofenceSettingsForm({ settings }: { settings: GeofenceSettings }) {
     async function onSubmit(data: z.infer<typeof GeofenceFormSchema>) {
         setIsSubmitting(true);
         try {
-            await saveGeofenceSettings(data);
+            await saveGeofenceSettings(data, currentUser.id);
             toast({
                 title: 'Settings Saved!',
                 description: 'Your geofencing settings have been updated.',
@@ -148,7 +154,7 @@ function GeofenceSettingsForm({ settings }: { settings: GeofenceSettings }) {
                     </div>
                 </CardContent>
                 <CardFooter className="border-t pt-6">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting || currentUser.role !== 'admin'}>
                         {isSubmitting ? 'Saving...' : 'Save Settings'}
                     </Button>
                 </CardFooter>
@@ -162,59 +168,81 @@ export default function AccountPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  // In a real app, you'd get the current user from session/auth context
-  // Also settings would be fetched from the backend.
+  // Data state
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [geofenceSettings, setGeofenceSettings] = React.useState<GeofenceSettings | null>(null);
   const [universalFields, setUniversalFields] = React.useState<string[]>([]);
   const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({});
+  const [globalDispositions, setGlobalDispositions] = React.useState<Disposition[]>([]);
+  const [globalSubDispositions, setGlobalSubDispositions] = React.useState<SubDisposition[]>([]);
+  const [campaignDispositions, setCampaignDispositions] = React.useState<Record<string, Disposition[]>>({});
+  const [campaignSubDispositions, setCampaignSubDispositions] = React.useState<Record<string, SubDisposition[]>>({});
   
-  // State for new field/disposition inputs
+  // UI State
   const [newUniversalField, setNewUniversalField] = React.useState('');
   const [newCampaignField, setNewCampaignField] = React.useState('');
   const [newDisposition, setNewDisposition] = React.useState('');
   const [newSubDisposition, setNewSubDisposition] = React.useState('');
+  const [selectedCustomFieldCampaign, setSelectedCustomFieldCampaign] = React.useState('');
+  const [selectedDispositionCampaign, setSelectedDispositionCampaign] = React.useState('');
 
   const uniqueCampaigns = Object.keys(campaignFields);
   
-  // MOCK DATA - In a real app this would come from a database or a global context
-  const globalDispositions: Disposition[] = ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
-  const globalSubDispositions: SubDisposition[] = ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
-
-
   React.useEffect(() => {
-    async function fetchSettings() {
-      const [gSettings, uFields, cFields] = await Promise.all([
-        getGeofenceSettings(),
-        getUniversalCustomFields(),
-        getCampaignCustomFields()
-      ]);
-      setGeofenceSettings(gSettings);
-      setUniversalFields(uFields);
-      setCampaignFields(cFields);
-      if (Object.keys(cFields).length > 0) {
-        setSelectedCustomFieldCampaign(Object.keys(cFields)[0]);
-        setSelectedDispositionCampaign(Object.keys(cFields)[0]);
+    async function fetchAllData() {
+      setIsLoading(true);
+      try {
+        const [user, gSettings, uFields, cFields, gDispos, gSubDispos, cDispos, cSubDispos] = await Promise.all([
+          getCurrentUser(),
+          getGeofenceSettings(),
+          getUniversalCustomFields(),
+          getCampaignCustomFields(),
+          getGlobalDispositions(),
+          getGlobalSubDispositions(),
+          getCampaignDispositions(),
+          getCampaignSubDispositions(),
+        ]);
+        
+        setCurrentUser(user || null);
+        setGeofenceSettings(gSettings);
+        setUniversalFields(uFields);
+        setCampaignFields(cFields);
+        setGlobalDispositions(gDispos);
+        setGlobalSubDispositions(gSubDispos);
+        setCampaignDispositions(cDispos);
+        setCampaignSubDispositions(cSubDispos);
+
+        if (Object.keys(cFields).length > 0) {
+          const firstCampaign = Object.keys(cFields)[0];
+          setSelectedCustomFieldCampaign(firstCampaign);
+          setSelectedDispositionCampaign(firstCampaign);
+        }
+      } catch (error) {
+        toast({ title: "Failed to load settings", description: "Could not fetch account and settings data.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
       }
     }
-    fetchSettings();
-  }, []);
+    fetchAllData();
+  }, [toast]);
 
-  const user = mockUser;
-  
   const form = useForm<z.infer<typeof ProfileFormSchema>>({
     resolver: zodResolver(ProfileFormSchema),
-    defaultValues: {
-      name: user.name,
-      phone: user.phone,
-      role: user.role,
+    values: {
+      name: currentUser?.name || '',
+      phone: currentUser?.phone || '',
+      email: currentUser?.email || '',
+      role: currentUser?.role || 'caller',
     },
   })
 
-  async function onSubmit(data: z.infer<typeof ProfileFormSchema>) {
+  async function onProfileSubmit(data: z.infer<typeof ProfileFormSchema>) {
+    if (!currentUser) return;
     setIsSubmitting(true)
     try {
-      await updateUser(user.id, data)
+      await updateUser(currentUser.id, data, currentUser.id)
       toast({
         title: 'Profile Updated!',
         description: `Your details have been updated successfully.`,
@@ -231,84 +259,46 @@ export default function AccountPage() {
     }
   }
 
-  // Mock state for custom fields/dispositions UI - in a real app this would come from a DB
-  const [selectedCustomFieldCampaign, setSelectedCustomFieldCampaign] = React.useState('');
+  const handleSaveChanges = async (type: 'universal' | 'campaign' | 'dispositions') => {
+    if (!currentUser) return;
+    setIsSubmitting(true);
+    let promise;
+    let title = '';
 
-  const [campaignDispositions, setCampaignDispositions] = React.useState<Record<string, Disposition[]>>({
-     'Summer Fest 2024': ['Interested', 'Follow-up', 'Callback', 'Application Started'],
-     'Diwali Dhamaka': ['Interested', 'Not Interested', 'Callback', 'Wrong Number'],
-  });
-   const [campaignSubDispositions, setCampaignSubDispositions] = React.useState<Record<string, SubDisposition[]>>({
-     'Summer Fest 2024': ['Paid', 'Trial Class Booked', 'Sent Brochure'],
-     'Diwali Dhamaka': ['Call Back Tomorrow', 'Price Issue'],
-  });
-  const [selectedDispositionCampaign, setSelectedDispositionCampaign] = React.useState('');
-
-  const handleAddUniversalField = () => {
-    if (newUniversalField.trim() && !universalFields.includes(newUniversalField.trim())) {
-        setUniversalFields(prev => [...prev, newUniversalField.trim()]);
-        setNewUniversalField('');
+    try {
+      switch (type) {
+        case 'universal':
+          promise = saveUniversalCustomFields(universalFields, currentUser.id);
+          title = 'Universal Fields Saved!';
+          break;
+        case 'campaign':
+          promise = saveCampaignCustomFields(campaignFields, currentUser.id);
+          title = 'Campaign Fields Saved!';
+          break;
+        case 'dispositions':
+          promise = Promise.all([
+            saveGlobalDispositions(globalDispositions, currentUser.id),
+            saveGlobalSubDispositions(globalSubDispositions, currentUser.id),
+            saveCampaignDispositions(campaignDispositions, currentUser.id),
+            saveCampaignSubDispositions(campaignSubDispositions, currentUser.id)
+          ]);
+          title = 'Dispositions Saved!';
+          break;
+      }
+      await promise;
+      toast({ title });
+      router.refresh();
+    } catch (error: any) {
+      toast({ title: "Save Failed", description: error.message || `Could not save ${type}.`, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   }
-  const handleRemoveUniversalField = (field: string) => {
-    setUniversalFields(prev => prev.filter(f => f !== field));
+
+  if (isLoading || !currentUser) {
+    return <Skeleton className="h-[500px] w-full" />;
   }
   
-  const handleAddCampaignField = () => {
-    if (newCampaignField.trim() && selectedCustomFieldCampaign && !campaignFields[selectedCustomFieldCampaign]?.includes(newCampaignField.trim())) {
-        setCampaignFields(prev => ({
-            ...prev,
-            [selectedCustomFieldCampaign]: [...(prev[selectedCustomFieldCampaign] || []), newCampaignField.trim()]
-        }));
-        setNewCampaignField('');
-    }
-  }
-  const handleRemoveCampaignField = (field: string) => {
-    if (selectedCustomFieldCampaign) {
-      setCampaignFields(prev => ({
-        ...prev,
-        [selectedCustomFieldCampaign]: prev[selectedCustomFieldCampaign].filter(f => f !== field)
-      }));
-    }
-  }
-
-  const handleAddDisposition = () => {
-      if (newDisposition.trim() && selectedDispositionCampaign && !campaignDispositions[selectedDispositionCampaign]?.includes(newDisposition.trim() as Disposition)) {
-          setCampaignDispositions(prev => ({
-              ...prev,
-              [selectedDispositionCampaign]: [...(prev[selectedDispositionCampaign] || []), newDisposition.trim() as Disposition]
-          }));
-          setNewDisposition('');
-      }
-  }
-  const handleRemoveDisposition = (disposition: string) => {
-      if (selectedDispositionCampaign) {
-          setCampaignDispositions(prev => ({
-              ...prev,
-              [selectedDispositionCampaign]: prev[selectedDispositionCampaign].filter(d => d !== disposition)
-          }));
-      }
-  }
-
-  const handleAddSubDisposition = () => {
-      if (newSubDisposition.trim() && selectedDispositionCampaign && !campaignSubDispositions[selectedDispositionCampaign]?.includes(newSubDisposition.trim() as SubDisposition)) {
-          setCampaignSubDispositions(prev => ({
-              ...prev,
-              [selectedDispositionCampaign]: [...(prev[selectedDispositionCampaign] || []), newSubDisposition.trim() as SubDisposition]
-          }));
-          setNewSubDisposition('');
-      }
-  }
-  const handleRemoveSubDisposition = (subDisposition: string) => {
-      if (selectedDispositionCampaign) {
-          setCampaignSubDispositions(prev => ({
-              ...prev,
-              [selectedDispositionCampaign]: prev[selectedDispositionCampaign].filter(d => d !== subDisposition)
-          }));
-      }
-  }
-
-
   return (
     <div className="flex flex-col gap-8">
        <div>
@@ -317,7 +307,7 @@ export default function AccountPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
+        <TabsList className="grid w-full max-w-xl grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
@@ -332,7 +322,7 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onProfileSubmit)}>
             <CardContent className="space-y-4">
                  <FormField
                     control={form.control}
@@ -342,6 +332,19 @@ export default function AccountPage() {
                         <FormLabel>Name</FormLabel>
                         <FormControl>
                         <Input placeholder="John Doe" {...field} disabled={isSubmitting} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                        <Input placeholder="user@email.com" {...field} disabled />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -383,7 +386,7 @@ export default function AccountPage() {
                 />
             </CardContent>
             <CardFooter className="border-t px-6 py-4">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || currentUser.id !== currentUser.id /* This is a placeholder for a real permission check */}>
                 {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </CardFooter>
@@ -396,11 +399,11 @@ export default function AccountPage() {
             <CardHeader>
                 <CardTitle>Geofencing Configuration</CardTitle>
                 <CardDescription>
-                    Define the operational area for your team. Users logging in outside this area can be flagged or restricted.
+                    Define the operational area for your team. Only admins can modify this.
                 </CardDescription>
             </CardHeader>
             {geofenceSettings ? (
-                <GeofenceSettingsForm settings={geofenceSettings} />
+                <GeofenceSettingsForm settings={geofenceSettings} currentUser={currentUser} />
             ) : (
                 <CardContent className="space-y-4">
                   <div className="grid md:grid-cols-2 gap-8">
@@ -417,39 +420,45 @@ export default function AccountPage() {
         <TabsContent value="custom-fields">
           <div className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Universal Custom Fields</CardTitle>
-                <CardDescription>
-                  These fields will appear for all leads, regardless of their campaign.
-                </CardDescription>
+              <CardHeader className="flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Universal Custom Fields</CardTitle>
+                  <CardDescription>
+                    These fields will appear for all leads, regardless of their campaign.
+                  </CardDescription>
+                </div>
+                 {currentUser.role === 'admin' && <Button size="sm" onClick={() => handleSaveChanges('universal')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4" /> Save Changes</Button>}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {universalFields.map(field => (
                     <Badge key={field} variant="secondary" className="text-base py-1 pl-3 pr-2">
                       {field}
-                      <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleRemoveUniversalField(field)}><X className="h-3 w-3" /></Button>
+                      {currentUser.role === 'admin' && <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => setUniversalFields(prev => prev.filter(f => f !== field))}><X className="h-3 w-3" /></Button>}
                     </Badge>
                   ))}
                 </div>
-                 <div className="flex items-center gap-2">
+                 {currentUser.role === 'admin' && <div className="flex items-center gap-2">
                     <Input 
                         placeholder="New universal field..."
                         value={newUniversalField}
                         onChange={(e) => setNewUniversalField(e.target.value)}
                         className="h-9 max-w-xs"
                     />
-                    <Button size="sm" onClick={handleAddUniversalField}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
-                 </div>
+                    <Button size="sm" onClick={() => { if(newUniversalField.trim()) { setUniversalFields(p => [...p, newUniversalField.trim()]); setNewUniversalField(''); } }}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                 </div>}
               </CardContent>
             </Card>
 
              <Card>
-              <CardHeader>
-                <CardTitle>Campaign-Specific Custom Fields</CardTitle>
-                <CardDescription>
-                  Define custom fields that only apply to leads within a specific campaign.
-                </CardDescription>
+              <CardHeader className="flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Campaign-Specific Custom Fields</CardTitle>
+                  <CardDescription>
+                    Define custom fields that only apply to leads within a specific campaign.
+                  </CardDescription>
+                </div>
+                {currentUser.role === 'admin' && <Button size="sm" onClick={() => handleSaveChanges('campaign')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4" /> Save Changes</Button>}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="max-w-xs">
@@ -471,19 +480,19 @@ export default function AccountPage() {
                             {(campaignFields[selectedCustomFieldCampaign] || []).map(field => (
                                 <Badge key={field} variant="outline" className="text-base py-1 pl-3 pr-2">
                                     {field}
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleRemoveCampaignField(field)}><X className="h-3 w-3" /></Button>
+                                    {currentUser.role === 'admin' && <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => setCampaignFields(p => ({...p, [selectedCustomFieldCampaign]: p[selectedCustomFieldCampaign].filter(f => f !== field)}))}><X className="h-3 w-3" /></Button>}
                                 </Badge>
                             ))}
                         </div>
-                        <div className="flex items-center gap-2 mt-4">
+                        {currentUser.role === 'admin' && <div className="flex items-center gap-2 mt-4">
                             <Input
                                 placeholder={`New field for ${selectedCustomFieldCampaign}...`}
                                 value={newCampaignField}
                                 onChange={(e) => setNewCampaignField(e.target.value)}
                                 className="h-9 max-w-xs"
                             />
-                            <Button size="sm" onClick={handleAddCampaignField}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
-                        </div>
+                            <Button size="sm" onClick={() => { if(newCampaignField.trim()) { setCampaignFields(p => ({...p, [selectedCustomFieldCampaign]: [...(p[selectedCustomFieldCampaign] || []), newCampaignField.trim()] })); setNewCampaignField(''); } }}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                        </div>}
                     </div>
                 )}
               </CardContent>
@@ -492,15 +501,55 @@ export default function AccountPage() {
         </TabsContent>
          <TabsContent value="dispositions">
           <Card>
-            <CardHeader>
-              <CardTitle>Campaign-Specific Dispositions</CardTitle>
-              <CardDescription>
-                Customize dispositions and sub-dispositions for each campaign. If a campaign is not configured, it will use the global defaults.
-              </CardDescription>
+            <CardHeader className="flex-row items-center justify-between">
+              <div>
+                <CardTitle>Dispositions</CardTitle>
+                <CardDescription>
+                  Manage global and campaign-specific dispositions. Only admins can make changes.
+                </CardDescription>
+              </div>
+              {currentUser.role === 'admin' && <Button size="sm" onClick={() => handleSaveChanges('dispositions')} disabled={isSubmitting}><Save className="mr-2 h-4 w-4" /> Save All Dispositions</Button>}
             </CardHeader>
             <CardContent className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
+                    <div className="space-y-4 rounded-lg border p-4">
+                        <h4 className="font-semibold">Global Dispositions</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {globalDispositions.map(d => (
+                                <Badge key={d} variant="secondary" className="text-base py-1 pl-3 pr-2">
+                                    {d}
+                                    {currentUser.role === 'admin' && <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => setGlobalDispositions(p => p.filter(item => item !== d))}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
+                                </Badge>
+                            ))}
+                        </div>
+                        <Separator />
+                        {currentUser.role === 'admin' && <div className="flex items-center gap-2">
+                            <Input placeholder="New global disposition..." value={newDisposition} onChange={(e) => setNewDisposition(e.target.value)} className="h-9" />
+                            <Button size="sm" onClick={() => { if(newDisposition.trim()) { setGlobalDispositions(p => [...p, newDisposition.trim() as Disposition]); setNewDisposition('')}}}><PlusCircle className="mr-2 h-4 w-4"/> Add</Button>
+                        </div>}
+                    </div>
+                    <div className="space-y-4 rounded-lg border p-4">
+                        <h4 className="font-semibold">Global Sub-Dispositions</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {globalSubDispositions.map(d => (
+                                <Badge key={d} variant="outline" className="text-base py-1 pl-3 pr-2">
+                                    {d}
+                                    {currentUser.role === 'admin' && <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => setGlobalSubDispositions(p => p.filter(item => item !== d))}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
+                                </Badge>
+                            ))}
+                        </div>
+                        <Separator />
+                        {currentUser.role === 'admin' && <div className="flex items-center gap-2">
+                            <Input placeholder="New global sub-disposition..." value={newSubDisposition} onChange={(e) => setNewSubDisposition(e.target.value)} className="h-9" />
+                            <Button size="sm" onClick={() => { if(newSubDisposition.trim()) { setGlobalSubDispositions(p => [...p, newSubDisposition.trim() as SubDisposition]); setNewSubDisposition('')}}}><PlusCircle className="mr-2 h-4 w-4"/> Add</Button>
+                        </div>}
+                    </div>
+                </div>
+
+                <Separator />
+                
                <div className="max-w-xs">
-                    <Label htmlFor="campaign-select-dispositions">Select a Campaign</Label>
+                    <Label htmlFor="campaign-select-dispositions">Manage Campaign-Specific Dispositions</Label>
                      <Select value={selectedDispositionCampaign} onValueChange={setSelectedDispositionCampaign}>
                         <SelectTrigger id="campaign-select-dispositions">
                             <SelectValue placeholder="Select a campaign..." />
@@ -513,50 +562,38 @@ export default function AccountPage() {
 
                 {selectedDispositionCampaign && (
                   <div className="grid md:grid-cols-2 gap-6 border-t pt-6">
-                    {/* Dispositions Card */}
                     <div className="space-y-4 rounded-lg border p-4">
                       <h4 className="font-semibold">Dispositions for "{selectedDispositionCampaign}"</h4>
                       <div className="flex flex-wrap gap-2">
-                        {(campaignDispositions[selectedDispositionCampaign] || globalDispositions).map(d => (
+                        {(campaignDispositions[selectedDispositionCampaign] || []).map(d => (
                            <Badge key={d} variant="secondary" className="text-base py-1 pl-3 pr-2">
                               {d}
-                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => handleRemoveDisposition(d)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              {currentUser.role === 'admin' && <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => setCampaignDispositions(p => ({ ...p, [selectedDispositionCampaign]: p[selectedDispositionCampaign].filter(item => item !== d) }))}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
                             </Badge>
                         ))}
                       </div>
                       <Separator />
-                       <div className="flex items-center gap-2">
-                            <Input
-                                placeholder="New disposition..."
-                                value={newDisposition}
-                                onChange={(e) => setNewDisposition(e.target.value)}
-                                className="h-9"
-                            />
-                            <Button size="sm" onClick={handleAddDisposition}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
-                        </div>
+                       {currentUser.role === 'admin' && <div className="flex items-center gap-2">
+                            <Input placeholder="New disposition..." value={newDisposition} onChange={(e) => setNewDisposition(e.target.value)} className="h-9" />
+                            <Button size="sm" onClick={() => {if(newDisposition.trim()){ setCampaignDispositions(p => ({...p, [selectedDispositionCampaign]: [...(p[selectedDispositionCampaign] || []), newDisposition.trim() as Disposition]})); setNewDisposition('')}}}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                        </div>}
                     </div>
 
-                    {/* Sub-Dispositions Card */}
                      <div className="space-y-4 rounded-lg border p-4">
                       <h4 className="font-semibold">Sub-Dispositions for "{selectedDispositionCampaign}"</h4>
                        <div className="flex flex-wrap gap-2">
-                        {(campaignSubDispositions[selectedDispositionCampaign] || globalSubDispositions).map(d => (
+                        {(campaignSubDispositions[selectedDispositionCampaign] || []).map(d => (
                            <Badge key={d} variant="outline" className="text-base py-1 pl-3 pr-2">
                               {d}
-                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => handleRemoveSubDisposition(d)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              {currentUser.role === 'admin' && <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 hover:bg-destructive/20" onClick={() => setCampaignSubDispositions(p => ({ ...p, [selectedDispositionCampaign]: p[selectedDispositionCampaign].filter(item => item !== d) }))}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
                             </Badge>
                         ))}
                       </div>
                       <Separator />
-                      <div className="flex items-center gap-2">
-                            <Input
-                                placeholder="New sub-disposition..."
-                                value={newSubDisposition}
-                                onChange={(e) => setNewSubDisposition(e.target.value)}
-                                className="h-9"
-                            />
-                            <Button size="sm" onClick={handleAddSubDisposition}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
-                        </div>
+                      {currentUser.role === 'admin' && <div className="flex items-center gap-2">
+                            <Input placeholder="New sub-disposition..." value={newSubDisposition} onChange={(e) => setNewSubDisposition(e.target.value)} className="h-9" />
+                            <Button size="sm" onClick={() => {if(newSubDisposition.trim()){ setCampaignSubDispositions(p => ({...p, [selectedDispositionCampaign]: [...(p[selectedDispositionCampaign] || []), newSubDisposition.trim() as SubDisposition]})); setNewSubDisposition('')}}}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                        </div>}
                     </div>
                   </div>
                 )}
@@ -567,5 +604,3 @@ export default function AccountPage() {
     </div>
   )
 }
-
-    
