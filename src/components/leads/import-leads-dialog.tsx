@@ -25,7 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { importLeads } from '@/actions/leads'
 import { getCampaignCustomFields, getUniversalCustomFields } from '@/actions/settings'
-import type { Lead, User } from '@/lib/types'
+import type { Lead } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Lightbulb, FileQuestion, Map, Download } from 'lucide-react'
 
@@ -33,7 +33,6 @@ import { Lightbulb, FileQuestion, Map, Download } from 'lucide-react'
 interface ImportLeadsDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  currentUser: User;
 }
 
 const requiredFields = ['name', 'phone'];
@@ -43,7 +42,6 @@ const DO_NOT_MAP_VALUE = '__do_not_map__';
 export function ImportLeadsDialog({
   isOpen,
   onOpenChange,
-  currentUser,
 }: ImportLeadsDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -51,7 +49,7 @@ export function ImportLeadsDialog({
   const [file, setFile] = React.useState<File | null>(null);
   const [parsedData, setParsedData] = React.useState<any[]>([]);
   const [headers, setHeaders] = React.useState<string[]>([]);
-  const [selectedCampaign, setSelectedCampaign] = React.useState<string>('');
+  const [selectedCampaign, setSelectedCampaign] = React.useState<string>(DO_NOT_MAP_VALUE);
   const [fieldMapping, setFieldMapping] = React.useState<Record<string, string>>({});
   
   const [universalCustomFields, setUniversalCustomFields] = React.useState<string[]>([]);
@@ -106,7 +104,7 @@ export function ImportLeadsDialog({
     setFile(null);
     setParsedData([]);
     setHeaders([]);
-    setSelectedCampaign('');
+    setSelectedCampaign(DO_NOT_MAP_VALUE);
     setFieldMapping({});
     const fileInput = document.getElementById('csv-file') as HTMLInputElement;
     if(fileInput) fileInput.value = '';
@@ -161,7 +159,7 @@ export function ImportLeadsDialog({
             
             universalCustomFields.forEach(processField);
             
-            if (selectedCampaign && campaignCustomFields[selectedCampaign]) {
+            if (selectedCampaign !== DO_NOT_MAP_VALUE && campaignCustomFields[selectedCampaign]) {
                 campaignCustomFields[selectedCampaign].forEach(processField);
             }
             
@@ -170,7 +168,7 @@ export function ImportLeadsDialog({
         });
 
         try {
-          await importLeads(leadsToImport, currentUser.id, selectedCampaign);
+          await importLeads(leadsToImport, selectedCampaign === DO_NOT_MAP_VALUE ? undefined : selectedCampaign);
           toast({
             title: 'Import Successful!',
             description: `${leadsToImport.length} leads have been imported.`,
@@ -194,7 +192,7 @@ export function ImportLeadsDialog({
     });
   };
   
-  const currentCampaignFields = selectedCampaign ? campaignCustomFields[selectedCampaign] || [] : [];
+  const currentCampaignFields = selectedCampaign !== DO_NOT_MAP_VALUE ? campaignCustomFields[selectedCampaign] || [] : [];
   const allMappableFields = [...universalCustomFields, ...currentCampaignFields];
 
   return (

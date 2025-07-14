@@ -48,14 +48,12 @@ interface EditUserDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   user: User
-  currentUser: User;
 }
 
 export function EditUserDialog({
   isOpen,
   onOpenChange,
-  user,
-  currentUser
+  user
 }: EditUserDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -87,7 +85,7 @@ export function EditUserDialog({
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true)
     try {
-      await updateUser(user.id, data, currentUser.id)
+      await updateUser(user.id, data)
       toast({
         title: 'User Updated!',
         description: `Details for ${data.name} have been updated successfully.`,

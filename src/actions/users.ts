@@ -1,35 +1,48 @@
 
 'use server'
 
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import type { User, LoginActivity } from "@/lib/types"
 import { revalidatePath } from "next/cache"
+import { headers } from 'next/headers';
 
-const MASTER_ADMIN: User = {
-    id: 'master-admin-001',
-    name: 'rds2197',
-    email: 'ramanuj@dreamdesk.in',
-    phone: '0000000000',
-    role: 'admin',
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    avatar: `https://placehold.co/32x32.png`,
-    password: 'Passw0rd'
-};
+async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
+    if (!auth || !db) throw new Error("Authentication services not available.");
+    
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+
+    if (!userDoc.exists) {
+        throw new Error("User not found in database.");
+    }
+
+    const user = { id: userDoc.id, ...userDoc.data() } as User;
+
+    if (requiredRole && user.role !== requiredRole) {
+        throw new Error(`Unauthorized: User does not have the required role ('${required_role}').`);
+    }
+
+    if (user.status !== 'active') {
+        throw new Error("User account is not active.");
+    }
+    
+    return user;
+}
+
+async function getVerifiedAdmin(idToken: string): Promise<User> {
+    return verifyUser(idToken, 'admin');
+}
 
 export async function getUsers(): Promise<User[]> {
     if (!db) {
         console.warn('DB not configured, returning empty list for users.');
-        return [MASTER_ADMIN];
+        return [];
     }
     const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
     if (snapshot.empty) {
-        return [MASTER_ADMIN];
+        return [];
     }
-    const dbUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-    // Ensure master admin isn't duplicated if it somehow gets into the DB
-    const filteredUsers = dbUsers.filter(user => user.email !== MASTER_ADMIN.email);
-    return [MASTER_ADMIN, ...filteredUsers];
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
 }
 
 export async function getLoginActivity(): Promise<LoginActivity[]> {
@@ -44,52 +57,64 @@ export async function getLoginActivity(): Promise<LoginActivity[]> {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LoginActivity));
 }
 
-async function verifyAdmin(adminUserId: string) {
-    if (adminUserId === MASTER_ADMIN.id) return;
-    if (!db) throw new Error("Database not configured.");
-    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
-    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
-        throw new Error("Unauthorized: Only admins can perform this action.");
-    }
-}
 
-export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>, adminUserId: string): Promise<User> {
-  if (userId === MASTER_ADMIN.id) {
-    throw new Error("The master admin user cannot be edited.");
-  }
-  if (!db) throw new Error("Database not configured.");
-  await verifyAdmin(adminUserId);
-  const userRef = db.collection('users').doc(userId);
+export async function updateUser(userId: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
+  const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+  if (!idToken || !db || !auth) throw new Error("Authentication required.");
   
+  const adminUser = await getVerifiedAdmin(idToken);
+  
+  if (userId === adminUser.id) {
+    throw new Error("Admins cannot edit their own roles or status via this function.");
+  }
+
+  const userRef = db.collection('users').doc(userId);
   await userRef.update({ ...data });
+
+  await auth.setCustomUserClaims(userId, { role: data.role });
   
   revalidatePath('/users');
   const updatedDoc = await userRef.get();
   return { id: updatedDoc.id, ...updatedDoc.data() } as User;
 }
 
-export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status'>, adminUserId: string): Promise<User> {
-  if (!db) throw new Error("Database not configured.");
-  await verifyAdmin(adminUserId);
-  const newUser: Omit<User, 'id'> = {
-    ...data,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    avatar: `https://placehold.co/32x32.png`,
-  };
-  
-  const docRef = await db.collection('users').add(newUser);
+export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | 'status' | 'password'>): Promise<User> {
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken || !db || !auth) throw new Error("Authentication required.");
+    await getVerifiedAdmin(idToken);
+    
+    const userRecord = await auth.createUser({
+        email: data.email,
+        password: data.password,
+        displayName: data.name,
+        disabled: true, // User starts as 'pending', so disable auth until approved.
+    });
 
-  revalidatePath('/users');
-  return { id: docRef.id, ...newUser };
+    const newUser: Omit<User, 'id' | 'avatar'> = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        role: data.role,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+    };
+  
+    await db.collection('users').doc(userRecord.uid).set(newUser);
+    await auth.setCustomUserClaims(userRecord.uid, { role: data.role });
+
+    revalidatePath('/users');
+    return { id: userRecord.uid, ...newUser, avatar: '' };
 }
 
-export async function toggleUserStatus(userId: string, adminUserId: string): Promise<User> {
-    if (userId === MASTER_ADMIN.id) {
-        throw new Error("The master admin status cannot be changed.");
+export async function toggleUserStatus(userId: string): Promise<User> {
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken || !db || !auth) throw new Error("Authentication required.");
+
+    const adminUser = await getVerifiedAdmin(idToken);
+    if (userId === adminUser.id) {
+      throw new Error("Admins cannot change their own status.");
     }
-    if (!db) throw new Error("Database not configured.");
-    await verifyAdmin(adminUserId);
+
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -99,15 +124,18 @@ export async function toggleUserStatus(userId: string, adminUserId: string): Pro
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     
     await userRef.update({ status: newStatus });
-    
+    await auth.updateUser(userId, { disabled: newStatus !== 'active' });
+
     revalidatePath('/users');
     const updatedDoc = await userRef.get();
     return { id: updatedDoc.id, ...updatedDoc.data() } as User;
 }
 
-export async function approveUser(userId: string, adminUserId: string): Promise<User> {
-    if (!db) throw new Error("Database not configured.");
-    await verifyAdmin(adminUserId);
+export async function approveUser(userId: string): Promise<User> {
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken || !db || !auth) throw new Error("Authentication required.");
+    await getVerifiedAdmin(idToken);
+    
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -116,6 +144,7 @@ export async function approveUser(userId: string, adminUserId: string): Promise<
 
     if (userDoc.data()?.status === 'pending') {
         await userRef.update({ status: 'active' });
+        await auth.updateUser(userId, { disabled: false });
     }
 
     revalidatePath('/users');
@@ -123,46 +152,23 @@ export async function approveUser(userId: string, adminUserId: string): Promise<
     return { id: updatedDoc.id, ...updatedDoc.data() } as User;
 }
 
+// This action is called by the client after a successful Firebase Auth login
+// to get the user's custom data (like role and status) from Firestore.
+export async function getAuthenticatedUser(idToken: string): Promise<{user: User}> {
+    if (!auth || !db) throw new Error("Authentication services not available.");
+    
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
 
-// This is a simulated login for the prototype.
-// In a real app, use Firebase Auth for secure authentication.
-export async function attemptLogin(email: string, password?: string): Promise<{ success: boolean; message: string; user?: User }> {
-    // Check for Master Admin credentials first
-    if (email.toLowerCase() === MASTER_ADMIN.email) {
-        if (password === MASTER_ADMIN.password) {
-            return { success: true, message: "Master Admin login successful!", user: MASTER_ADMIN };
-        } else {
-            return { success: false, message: "Invalid password for Master Admin." };
-        }
-    }
-
-    if (!db) {
-        return { success: false, message: "Database not configured. Cannot log in." };
+    if (!userDoc.exists) {
+        throw new Error("User profile not found in database.");
     }
     
-    const usersRef = db.collection('users');
-    const snapshot = await usersRef.where('email', '==', email.toLowerCase()).limit(1).get();
-
-    if (snapshot.empty) {
-        return { success: false, message: "Invalid email or password." };
-    }
-
-    const userDoc = snapshot.docs[0];
     const user = { id: userDoc.id, ...userDoc.data() } as User;
     
-    // In a real app, you would verify a password hash. Here we do a plain text check.
-    if (user.password !== password) {
-        return { success: false, message: "Invalid email or password." };
+    if (user.status !== 'active') {
+        throw new Error(`Your account is currently ${user.status}. Please contact an administrator.`);
     }
 
-    switch(user.status) {
-        case 'pending':
-            return { success: false, message: "Your account is awaiting admin approval. Please check back later." };
-        case 'inactive':
-            return { success: false, message: "Your account has been deactivated. Please contact an administrator." };
-        case 'active':
-            return { success: true, message: "Login successful!", user: user };
-        default:
-            return { success: false, message: "An unknown error occurred. Please try again." };
-    }
+    return { user };
 }

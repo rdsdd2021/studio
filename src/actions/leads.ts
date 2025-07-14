@@ -1,8 +1,34 @@
 
 'use server'
 
-import { db } from '@/lib/firebase';
-import type { Lead, Assignment, Disposition, SubDisposition } from "@/lib/types"
+import { db, auth } from '@/lib/firebase';
+import type { Lead, Assignment, Disposition, SubDisposition, User } from "@/lib/types"
+import { headers } from 'next/headers';
+
+
+async function verifyUser(idToken: string, requiredRole?: 'admin' | 'caller'): Promise<User> {
+    if (!auth || !db) throw new Error("Authentication services not available.");
+    
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+
+    if (!userDoc.exists) {
+        throw new Error("User not found in database.");
+    }
+
+    const user = { id: userDoc.id, ...userDoc.data() } as User;
+
+    if (requiredRole && user.role !== requiredRole) {
+        throw new Error(`Unauthorized: User does not have the required role ('${requiredRole}').`);
+    }
+
+    if (user.status !== 'active') {
+        throw new Error("User account is not active.");
+    }
+    
+    return user;
+}
+
 
 export async function getLeads(): Promise<Lead[]> {
   if (!db) {
@@ -58,7 +84,6 @@ export async function getAssignmentHistory(leadId: string): Promise<Assignment[]
 
 export async function addAssignment(
   leadId: string,
-  userId: string,
   disposition: Disposition,
   subDisposition: SubDisposition,
   remark: string,
@@ -66,22 +91,16 @@ export async function addAssignment(
   scheduleDate?: Date
 ): Promise<Assignment> {
     if (!db) { throw new Error("Database not configured."); }
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-        throw new Error("User not found");
-    }
-    const user = userDoc.data();
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) throw new Error("Authentication required.");
 
-    // Authorization Check
-    if (user?.role !== 'caller') {
-        throw new Error("Only callers can add dispositions.");
-    }
+    const user = await verifyUser(idToken, 'caller');
 
     const now = new Date();
     const newAssignmentData = {
         mainDataRefId: leadId,
-        userId: userId,
-        userName: user?.name,
+        userId: user.id,
+        userName: user.name,
         assignedTime: now.toISOString(),
         disposition,
         dispositionTime: now.toISOString(),
@@ -97,21 +116,19 @@ export async function addAssignment(
     return { id: docRef.id, ...newAssignmentData } as Assignment;
 }
 
-export async function assignLeads(leadIds: string[], userId: string, adminUserId: string): Promise<Assignment[]> {
+export async function assignLeads(leadIds: string[], userId: string): Promise<Assignment[]> {
     if (!db) { throw new Error("Database not configured."); }
 
-    // Authorization check
-    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
-    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
-        throw new Error("Unauthorized: Only admins can assign leads.");
-    }
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) throw new Error("Authentication required.");
+    await verifyUser(idToken, 'admin');
 
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
         throw new Error("User to assign to not found");
     }
-    const user = userDoc.data();
-    if (user?.role !== 'caller') {
+    const userToAssign = userDoc.data();
+    if (userToAssign?.role !== 'caller') {
         throw new Error("Leads can only be assigned to callers.");
     }
 
@@ -124,7 +141,7 @@ export async function assignLeads(leadIds: string[], userId: string, adminUserId
         const newAssignmentData = {
             mainDataRefId: leadId,
             userId: userId,
-            userName: user?.name,
+            userName: userToAssign?.name,
             assignedTime: now.toISOString(),
             disposition: 'New' as Disposition,
         };
@@ -139,15 +156,14 @@ export async function assignLeads(leadIds: string[], userId: string, adminUserId
 
 export async function importLeads(
   newLeads: Partial<Lead>[],
-  adminUserId: string,
   campaign?: string
 ): Promise<{ count: number }> {
     if (!db) { throw new Error("Database not configured."); }
-    // Authorization check
-    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
-    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
-        throw new Error("Unauthorized: Only admins can import leads.");
-    }
+    
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) throw new Error("Authentication required.");
+    await verifyUser(idToken, 'admin');
+
     const now = new Date().toISOString();
     const batch = db.batch();
     
@@ -172,14 +188,12 @@ export async function importLeads(
 }
 
 
-export async function addCampaignToLeads(leadIds: string[], campaign: string, adminUserId: string): Promise<{ count: number }> {
+export async function addCampaignToLeads(leadIds: string[], campaign: string): Promise<{ count: number }> {
     if (!db) { throw new Error("Database not configured."); }
 
-    // Authorization check
-    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
-    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
-        throw new Error("Unauthorized: Only admins can add campaign tags.");
-    }
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) throw new Error("Authentication required.");
+    await verifyUser(idToken, 'admin');
 
     const { firestore } = await import('firebase-admin/firestore');
     const batch = db.batch();
@@ -195,22 +209,18 @@ export async function addCampaignToLeads(leadIds: string[], campaign: string, ad
     return { count: leadIds.length };
 }
 
-export async function updateLeadCustomField(leadId: string, fieldName: string, value: string, userId: string): Promise<Lead> {
+export async function updateLeadCustomField(leadId: string, fieldName: string, value: string): Promise<Lead> {
     if (!db) { throw new Error("Database not configured."); }
-    const leadRef = db.collection('leads').doc(leadId);
     
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-        throw new Error("User not found");
-    }
-    const user = userDoc.data();
-    if (user?.role !== 'caller') {
-        throw new Error("Only callers can update custom fields.");
-    }
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) throw new Error("Authentication required.");
+    const user = await verifyUser(idToken, 'caller');
+
+    const leadRef = db.collection('leads').doc(leadId);
 
     const fieldData = {
         value,
-        updatedBy: user?.name,
+        updatedBy: user.name,
         updatedAt: new Date().toISOString()
     };
     

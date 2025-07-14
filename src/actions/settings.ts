@@ -1,13 +1,34 @@
 
 'use server'
 
-import { db } from '@/lib/firebase';
-import type { Disposition, SubDisposition } from '@/lib/types';
+import { db, auth } from '@/lib/firebase';
+import type { Disposition, SubDisposition, User } from '@/lib/types';
+import { headers } from 'next/headers';
 
 export interface GeofenceSettings {
     centerLocation: string;
     radius: number;
 }
+
+async function verifyAdmin(): Promise<User> {
+    if (!auth || !db) throw new Error("Authentication services not available.");
+    
+    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) throw new Error("Authentication required.");
+
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+
+    if (!userDoc.exists) {
+        throw new Error("User not found in database.");
+    }
+    const user = { id: userDoc.id, ...userDoc.data() } as User;
+    if (user.role !== 'admin') {
+        throw new Error("Unauthorized: User is not an admin.");
+    }
+    return user;
+}
+
 
 async function getSettingsDoc(key: string) {
     if (!db) return null;
@@ -16,12 +37,9 @@ async function getSettingsDoc(key: string) {
     return doc;
 }
 
-async function saveSettingsDoc(key: string, value: any, adminUserId: string) {
+async function saveSettingsDoc(key: string, value: any) {
     if (!db) { throw new Error("Database not configured."); }
-    const adminUserDoc = await db.collection('users').doc(adminUserId).get();
-    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
-        throw new Error("Unauthorized: Only admins can save settings.");
-    }
+    await verifyAdmin();
     const docRef = db.collection('settings').doc(key);
     await docRef.set({ value });
 }
@@ -34,8 +52,8 @@ export async function getGeofenceSettings(): Promise<GeofenceSettings> {
     return { centerLocation: 'Connaught Place, New Delhi', radius: 5000 };
 }
 
-export async function saveGeofenceSettings(settings: GeofenceSettings, adminUserId: string): Promise<void> {
-    await saveSettingsDoc('geofence', settings, adminUserId);
+export async function saveGeofenceSettings(settings: GeofenceSettings): Promise<void> {
+    await saveSettingsDoc('geofence', settings);
 }
 
 export async function getUniversalCustomFields(): Promise<string[]> {
@@ -46,8 +64,8 @@ export async function getUniversalCustomFields(): Promise<string[]> {
     return ['Source', 'Previous Course'];
 }
 
-export async function saveUniversalCustomFields(fields: string[], adminUserId: string): Promise<void> {
-    await saveSettingsDoc('universalCustomFields', fields, adminUserId);
+export async function saveUniversalCustomFields(fields: string[]): Promise<void> {
+    await saveSettingsDoc('universalCustomFields', fields);
 }
 
 
@@ -62,8 +80,8 @@ export async function getCampaignCustomFields(): Promise<Record<string, string[]
     };
 }
 
-export async function saveCampaignCustomFields(fields: Record<string, string[]>, adminUserId: string): Promise<void> {
-    await saveSettingsDoc('campaignCustomFields', fields, adminUserId);
+export async function saveCampaignCustomFields(fields: Record<string, string[]>): Promise<void> {
+    await saveSettingsDoc('campaignCustomFields', fields);
 }
 
 export async function getGlobalDispositions(): Promise<Disposition[]> {
@@ -74,8 +92,8 @@ export async function getGlobalDispositions(): Promise<Disposition[]> {
     return ['Interested', 'Not Interested', 'Follow-up', 'Callback', 'Not Reachable'];
 }
 
-export async function saveGlobalDispositions(dispositions: Disposition[], adminUserId: string): Promise<void> {
-    await saveSettingsDoc('globalDispositions', dispositions, adminUserId);
+export async function saveGlobalDispositions(dispositions: Disposition[]): Promise<void> {
+    await saveSettingsDoc('globalDispositions', dispositions);
 }
 
 export async function getGlobalSubDispositions(): Promise<SubDisposition[]> {
@@ -86,8 +104,8 @@ export async function getGlobalSubDispositions(): Promise<SubDisposition[]> {
     return ['Ringing', 'Switched Off', 'Call Back Later', 'Not Answering', 'Wrong Number', 'Language Barrier', 'High Price', 'Not Interested Now', 'Will Join Later', 'Admission Done'];
 }
 
-export async function saveGlobalSubDispositions(subDispositions: SubDisposition[], adminUserId: string): Promise<void> {
-    await saveSettingsDoc('globalSubDispositions', subDispositions, adminUserId);
+export async function saveGlobalSubDispositions(subDispositions: SubDisposition[]): Promise<void> {
+    await saveSettingsDoc('globalSubDispositions', subDispositions);
 }
 
 export async function getCampaignDispositions(): Promise<Record<string, Disposition[]>> {
@@ -102,7 +120,7 @@ export async function getCampaignDispositions(): Promise<Record<string, Disposit
 }
 
 export async function saveCampaignDispositions(dispositions: Record<string, Disposition[]>, adminUserId: string): Promise<void> {
-    await saveSettingsDoc('campaignDispositions', dispositions, adminUserId);
+    await saveSettingsDoc('campaignDispositions', dispositions);
 }
 
 export async function getCampaignSubDispositions(): Promise<Record<string, SubDisposition[]>> {
@@ -116,6 +134,6 @@ export async function getCampaignSubDispositions(): Promise<Record<string, SubDi
     };
 }
 
-export async function saveCampaignSubDispositions(subDispositions: Record<string, SubDisposition[]>, adminUserId: string): Promise<void> {
-    await saveSettingsDoc('campaignSubDispositions', subDispositions, adminUserId);
+export async function saveCampaignSubDispositions(subDispositions: Record<string, SubDisposition[]>): Promise<void> {
+    await saveSettingsDoc('campaignSubDispositions', subDispositions);
 }

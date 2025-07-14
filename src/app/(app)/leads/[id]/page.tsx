@@ -1,4 +1,7 @@
 
+'use client';
+
+import * as React from 'react';
 import { getLeadDetails, getAssignmentHistory, getLeads, getAssignments } from '@/actions/leads';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,47 +12,87 @@ import type { Assignment, Lead } from '@/lib/types';
 import { LeadDetailHeader } from '@/components/leads/lead-detail-header';
 import { getUniversalCustomFields, getCampaignCustomFields } from '@/actions/settings';
 import { UpdateCustomFieldForm } from '@/components/leads/update-custom-field-form';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/hooks/use-auth';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function LeadDetailPage({ params }: { params: { id: string } }) {
-  const lead = await getLeadDetails(params.id);
-  if (!lead) {
+export default function LeadDetailPage({ params }: { params: { id: string } }) {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [pageData, setPageData] = React.useState<{
+    lead: Lead;
+    history: Assignment[];
+    previousLeadId?: string;
+    nextLeadId?: string;
+    allCustomFieldsForLead: string[];
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      const lead = await getLeadDetails(params.id);
+      if (!lead) {
+        setIsLoading(false);
+        return; // will be handled by notFound outside effect
+      }
+      
+      const [
+        history, 
+        allLeads, 
+        allAssignments, 
+        universalCustomFields, 
+        campaignCustomFields
+      ] = await Promise.all([
+        getAssignmentHistory(params.id),
+        getLeads(),
+        getAssignments(),
+        getUniversalCustomFields(),
+        getCampaignCustomFields(),
+      ]);
+      
+      const latestAssignments = new Map<string, Assignment>();
+      allAssignments.forEach(assignment => {
+        const existing = latestAssignments.get(assignment.mainDataRefId);
+        if (!existing || new Date(assignment.assignedTime) > new Date(existing.assignedTime)) {
+          latestAssignments.set(assignment.mainDataRefId, assignment);
+        }
+      });
+
+      const myLeadAssignments = Array.from(latestAssignments.values()).filter(a => a.userId === user.id);
+      const myLeadIds = new Set(myLeadAssignments.map(a => a.mainDataRefId));
+      const myLeads = allLeads.filter(l => myLeadIds.has(l.refId));
+
+      const currentIndex = myLeads.findIndex(l => l.refId === params.id);
+      const previousLeadId = currentIndex > 0 ? myLeads[currentIndex - 1].refId : undefined;
+      const nextLeadId = currentIndex < myLeads.length - 1 ? myLeads[currentIndex + 1].refId : undefined;
+      
+      const relevantCampaignFields = lead.campaigns?.flatMap(c => campaignCustomFields[c] || []) || [];
+      const allCustomFieldsForLead = [...universalCustomFields, ...relevantCampaignFields];
+      
+      setPageData({
+        lead,
+        history,
+        previousLeadId,
+        nextLeadId,
+        allCustomFieldsForLead,
+      });
+
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, [params.id, user]);
+
+  if (isLoading) {
+    return <Skeleton className="w-full h-[600px]" />;
+  }
+
+  if (!pageData?.lead) {
     notFound();
   }
 
-  const history = await getAssignmentHistory(params.id);
-  const currentUser = await getCurrentUser();
-  
-  // To find the next lead, we need the full list of "My Leads"
-  const allLeads = await getLeads();
-  const allAssignments = await getAssignments();
-  
-  const [universalCustomFields, campaignCustomFields] = await Promise.all([
-    getUniversalCustomFields(),
-    getCampaignCustomFields()
-  ]);
-
-  const latestAssignments = new Map<string, Assignment>();
-  allAssignments.forEach(assignment => {
-    const existing = latestAssignments.get(assignment.mainDataRefId);
-    if (!existing || new Date(assignment.assignedTime) > new Date(existing.assignedTime)) {
-      latestAssignments.set(assignment.mainDataRefId, assignment);
-    }
-  });
-
-  const myLeadAssignments = currentUser ? Array.from(latestAssignments.values()).filter(
-    (a) => a.userId === currentUser.id
-  ) : [];
-  
-  const myLeadIds = new Set(myLeadAssignments.map(a => a.mainDataRefId));
-  const myLeads = allLeads.filter(l => myLeadIds.has(l.refId));
-
-  const currentIndex = myLeads.findIndex(l => l.refId === params.id);
-  const previousLeadId = currentIndex > 0 ? myLeads[currentIndex - 1].refId : undefined;
-  const nextLeadId = currentIndex < myLeads.length - 1 ? myLeads[currentIndex + 1].refId : undefined;
-
-  const relevantCampaignFields = lead.campaigns?.flatMap(c => campaignCustomFields[c] || []) || [];
-  const allCustomFieldsForLead = [...universalCustomFields, ...relevantCampaignFields];
+  const { lead, history, previousLeadId, nextLeadId, allCustomFieldsForLead } = pageData;
   const hasCustomFields = allCustomFieldsForLead.length > 0;
 
   return (
@@ -127,7 +170,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 text-sm">
                   {allCustomFieldsForLead.map((fieldName) => {
                     const fieldData = lead.customFields?.[fieldName];
-                    const isEditable = !fieldData?.value && currentUser?.role === 'caller';
+                    const isEditable = !fieldData?.value && user?.role === 'caller';
 
                     return (
                       <div className="space-y-1.5" key={fieldName}>
@@ -135,11 +178,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                           <Info className="h-4 w-4" />
                           {fieldName}
                         </label>
-                        {isEditable && currentUser ? (
+                        {isEditable ? (
                            <UpdateCustomFieldForm 
                               leadId={lead.refId}
                               fieldName={fieldName}
-                              currentUserId={currentUser.id}
                             />
                         ) : (
                           <div>
@@ -172,14 +214,14 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         </div>
 
         <div className="md:col-span-1">
-          {currentUser?.role === 'caller' && (
+          {user?.role === 'caller' && (
             <Card>
               <CardHeader>
                 <CardTitle>Update Status</CardTitle>
                 <CardDescription>Log the outcome of your call.</CardDescription>
               </CardHeader>
               <CardContent>
-                <UpdateDispositionForm leadId={lead.refId} currentUserId={currentUser.id} history={history} myLeads={myLeads} />
+                <UpdateDispositionForm leadId={lead.refId} history={history} myLeads={myLeads} />
               </CardContent>
             </Card>
           )}

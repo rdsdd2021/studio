@@ -23,14 +23,12 @@ interface AddCampaignDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   leadIds: string[]
-  currentUser: User;
 }
 
 export function AddCampaignDialog({
   isOpen,
   onOpenChange,
   leadIds,
-  currentUser,
 }: AddCampaignDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -49,7 +47,7 @@ export function AddCampaignDialog({
 
     setIsSubmitting(true)
     try {
-      await addCampaignToLeads(leadIds, campaign, currentUser.id)
+      await addCampaignToLeads(leadIds, campaign)
       toast({
         title: 'Campaign Tag Added!',
         description: `The campaign tag has been added to ${leadIds.length} lead(s).`,

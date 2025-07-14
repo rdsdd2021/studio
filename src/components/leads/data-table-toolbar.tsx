@@ -13,6 +13,7 @@ import type { Disposition, User } from '@/lib/types'
 import { ImportLeadsDialog } from './import-leads-dialog'
 import { AddCampaignDialog } from './update-campaign-dialog'
 import { Alert, AlertDescription } from '../ui/alert'
+import { useAuth } from '@/hooks/use-auth'
 
 const dispositions: {label: Disposition, value: Disposition}[] = [
   { label: 'New', value: 'New' },
@@ -30,7 +31,6 @@ interface Option {
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
-  currentUser?: User;
   callers?: Option[];
   schoolOptions?: Option[];
   localityOptions?: Option[];
@@ -42,7 +42,6 @@ interface DataTableToolbarProps<TData> {
 
 export function DataTableToolbar<TData>({
   table,
-  currentUser,
   callers,
   schoolOptions,
   localityOptions,
@@ -51,6 +50,7 @@ export function DataTableToolbar<TData>({
   campaignOptions,
   showImportButton = true,
 }: DataTableToolbarProps<TData>) {
+  const { user } = useAuth();
   const isFiltered = table.getState().columnFilters.length > 0 || !!table.getState().globalFilter;
 
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
@@ -152,13 +152,13 @@ export function DataTableToolbar<TData>({
           )}
         </div>
         <div className='flex items-center gap-2'>
-            {showImportButton && currentUser?.role === 'admin' && (
+            {showImportButton && user?.role === 'admin' && (
                 <Button size="sm" variant="outline" className="h-8" onClick={() => setIsImportDialogOpen(true)}>
                     <Upload className="mr-2 h-4 w-4" />
                     Import
                 </Button>
             )}
-            {leadCount > 0 && currentUser?.role === 'admin' && (
+            {leadCount > 0 && user?.role === 'admin' && (
               <>
                 <Button size="sm" variant="outline" className="h-8" onClick={() => setIsCampaignDialogOpen(true)}>
                   <Tag className="mr-2 h-4 w-4" />
@@ -181,27 +181,21 @@ export function DataTableToolbar<TData>({
         </Alert>
       )}
 
-      {currentUser && (
-        <>
-          <AssignLeadsDialog
-            isOpen={isAssignDialogOpen}
-            onOpenChange={setIsAssignDialogOpen}
-            leadIds={selectedLeadIds}
-            currentUser={currentUser}
-          />
-          <ImportLeadsDialog 
-            isOpen={isImportDialogOpen}
-            onOpenChange={setIsImportDialogOpen}
-            currentUser={currentUser}
-          />
-          <AddCampaignDialog
-            isOpen={isCampaignDialogOpen}
-            onOpenChange={setIsCampaignDialogOpen}
-            leadIds={selectedLeadIds}
-            currentUser={currentUser}
-          />
-        </>
-      )}
+      
+        <AssignLeadsDialog
+          isOpen={isAssignDialogOpen}
+          onOpenChange={setIsAssignDialogOpen}
+          leadIds={selectedLeadIds}
+        />
+        <ImportLeadsDialog 
+          isOpen={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+        />
+        <AddCampaignDialog
+          isOpen={isCampaignDialogOpen}
+          onOpenChange={setIsCampaignDialogOpen}
+          leadIds={selectedLeadIds}
+        />
     </>
   )
 }

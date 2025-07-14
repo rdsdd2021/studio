@@ -1,36 +1,29 @@
 
-import admin from 'firebase-admin';
+'use server';
+import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
-let db: admin.firestore.Firestore;
+const apps = getApps();
 
-const hasRequiredEnvVars =
-  process.env.FIREBASE_PROJECT_ID &&
-  process.env.FIREBASE_CLIENT_EMAIL &&
-  process.env.FIREBASE_PRIVATE_KEY;
-
-if (hasRequiredEnvVars) {
-    if (!admin.apps.length) {
-        try {
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: process.env.FIREBASE_PROJECT_ID,
-                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-                }),
-            });
-            console.log("Firebase Admin SDK initialized successfully.");
-            db = admin.firestore();
-        } catch (error: any) {
-            console.error('Firebase admin initialization error:', error.stack);
-        }
-    } else {
-        db = admin.firestore();
-    }
-} else {
-    console.warn(
-      'Firebase Admin SDK not initialized. Missing one or more of FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.'
-    );
+if (!apps.length) {
+  // When running on Firebase App Hosting, the config is automatically provided.
+  // For local development, you can use a service account file.
+  if (process.env.FIREBASE_CONFIG) {
+     initializeApp();
+  } else if(process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log("Initializing Firebase with GOOGLE_APPLICATION_CREDENTIALS for local development...");
+    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    initializeApp({
+        credential: cert(serviceAccount)
+    });
+  } else {
+    console.warn("Firebase could not be initialized. Missing FIREBASE_CONFIG or GOOGLE_APPLICATION_CREDENTIALS.");
+  }
 }
 
+const db = apps.length ? getFirestore(getApp()) : undefined;
+const auth = apps.length ? getAuth(getApp()) : undefined;
 
-export { db };
+
+export { db, auth };

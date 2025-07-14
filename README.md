@@ -1,17 +1,19 @@
-# LeadsFlow
 
-This is a Next.js application for a lead management system called LeadsFlow. It serves as a high-fidelity prototype designed to be fully functional and easily connected to a production Firebase backend.
+# LeadsFlow - Firebase App Hosting Edition
+
+This is a Next.js application for a lead management system called LeadsFlow. It's a high-fidelity prototype designed to be deployed directly to Firebase App Hosting, leveraging Firebase Authentication and Firestore.
 
 ## Core Features
 
--   **User Authentication**: A mock login screen to simulate user authentication for different roles.
--   **Role-Based Dashboards**: Separate, tailored dashboards for Admins and Callers.
+-   **User Authentication**: Secure user login/logout powered by Firebase Authentication.
+-   **Role-Based Dashboards**: Separate, tailored dashboards for Admins and Callers, with UI elements dynamically rendered based on user roles.
+-   **Secure Server Actions**: All backend operations verify the user's identity via Firebase Auth tokens, ensuring users can only perform actions they are authorized for.
 -   **Flexible Lead Import**: Import leads from a CSV file. Only `name` and `phone` are required.
 -   **Campaign Field Mapping**: When importing, optionally select a campaign and map columns from your CSV to campaign-specific custom fields.
 -   **Lead Filtering & Assignment**: Screens for administrators to filter, view, and assign leads to callers.
 -   **Caller & Detail Views**: Dedicated views for callers to see their assigned leads and for anyone to view the detailed history of a specific lead.
 -   **Caller Data Entry**: Callers can input data for predefined custom fields on a lead. This action is tracked with the user's name and a timestamp.
--   **User Management**: A section for admins to add, edit, and manage user accounts.
+-   **User Management**: A section for admins to add, edit, and manage user accounts, with roles and statuses synced with Firebase Authentication.
 -   **AI-Powered Suggestions**: A Genkit flow that suggests appropriate sub-dispositions for a call based on the caller's remarks.
 -   **Geofencing**: Admins can define an operational area to monitor or restrict user logins.
 
@@ -20,7 +22,7 @@ This is a Next.js application for a lead management system called LeadsFlow. It 
 -   **Framework**: Next.js (App Router)
 -   **UI**: React, ShadCN UI, Tailwind CSS
 -   **AI**: Google Genkit
--   **Backend (Recommended)**: Firebase (Firestore)
+-   **Backend**: Firebase (App Hosting, Authentication, Firestore)
 
 ---
 
@@ -42,12 +44,12 @@ The application is designed around two primary user roles: **Admin** and **Calle
 
 ### User Flow
 
-1.  **Login**: A user logs in via the `/login` page. The system checks mock user data to determine their role.
+1.  **Login**: A user logs in via the `/login` page using Firebase Authentication (email/password).
 2.  **Dashboard**: After logging in, the user lands on their role-specific Dashboard.
     -   **Admin**: Sees a high-level overview of team performance, total leads, and recent system activity.
     -   **Caller**: Sees their personal statistics, a list of upcoming follow-ups, and a button to start calling leads.
 3.  **Lead Import (Admin)**: An Admin can navigate to "All Leads" and use the "Import" button.
-    -   They upload a CSV file. The only mandatory columns are `name` and `phone`.
+    -   They upload a CSV file. The only mandatory columns are `name` and `phone`. A sample file is available for download.
     -   Optionally, they can select a campaign. If they do, the system displays the custom fields defined for that campaign.
     -   The admin can then map columns from their CSV file to these custom fields.
     -   Upon import, new leads are created with the mapped data.
@@ -56,84 +58,103 @@ The application is designed around two primary user roles: **Admin** and **Calle
     -   On the detail page, they can see all lead details. In the "Additional Information" section, they can fill in any custom fields that are currently empty.
     -   Once a field is updated, it becomes read-only, displaying the value, the name of the caller who updated it, and the date of the update.
     -   The caller can then use the "Update Status" form to log the call's outcome, with date pickers appearing for follow-ups or scheduled appointments. The AI Suggestion feature can help them choose the best sub-disposition.
-6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like universal/campaign custom fields, custom dispositions, and geofencing.
+6.  **System Management (Admin)**: An Admin can go to the "Account" page to configure settings like universal/campaign custom fields, custom dispositions, and geofencing. These settings are saved live to the database.
 
 ---
 
-## How to Make This App Launch-Ready with Firebase
+## How to Set Up and Deploy with Firebase App Hosting
 
-To transition this prototype into a production application, you need to replace the mock data with a real Firebase backend. The application is architected to make this process straightforward.
+### Step 1: Set Up Your Firebase Project
 
-### Step 1: Set Up a Firebase Project
-
-1.  **Create a Firebase Project**:
-    -   Go to the [Firebase Console](https://console.firebase.google.com/), sign in, and click "Add project".
-    -   Follow the on-screen instructions to create your project.
-
-2.  **Set Up Firestore**:
-    -   From your project's dashboard, go to the **Firestore Database** section.
-    -   Click "Create database" and start in **production mode**.
-    -   Choose a location for your database.
-
-3.  **Generate a Service Account Key**:
-    -   In your Firebase project, go to **Project Settings** (the gear icon).
-    -   Navigate to the **Service accounts** tab.
-    -   Click "Generate new private key". A JSON file will be downloaded. This file contains the credentials your Next.js server will use to securely connect to Firebase services.
+1.  **Create a Firebase Project**: Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2.  **Enable Firebase Services**:
+    *   **Authentication**: Go to the "Authentication" section, click "Get started", and enable the **Email/Password** sign-in provider.
+    *   **Firestore**: Go to the "Firestore Database" section, click "Create database", start in **production mode**, and choose a location.
+3.  **Create a Web App**: In your Firebase project settings, under the "General" tab, scroll down to "Your apps" and click the web icon (`</>`) to create a new web app. Give it a nickname and Firebase will provide you with a `firebaseConfig` object.
 
 ### Step 2: Configure Your Local Environment
 
-1.  **Create an Environment File**:
-    -   In the root of your project, create a file named `.env.local`. This is a special file that Next.js automatically loads for environment variables.
-
-2.  **Add Credentials to `.env.local`**:
-    -   Open the JSON key file you downloaded. You will need three values: `project_id`, `client_email`, and `private_key`.
-    -   Add these to your `.env.local` file.
-        ```env
-        FIREBASE_PROJECT_ID="<your-project-id>"
-        FIREBASE_CLIENT_EMAIL="<your-client-email>"
-        FIREBASE_PRIVATE_KEY="<your-private-key>"
-        ```
-    -   **Important**: The `private_key` from the JSON file contains newline characters (`\n`). When you paste it into the `.env.local` file, you may need to ensure they are preserved correctly. The provided `src/lib/firebase.ts` file handles replacing `\\n` with `\n`.
-
-### Step 3: Set Up Database Collections
-
-The application is designed to work with the following Firestore collections. Firestore will create these automatically when you first write data to them, but it's good to know the intended structure.
-
--   **`users`**: Stores user profiles. (e.g., `{ name: 'Jane Doe', role: 'caller', status: 'active', ... }`)
--   **`leads`**: Stores all lead records. (e.g., `{ name: 'Aarav Sharma', phone: '9876543210', customFields: { ... }, ... }`)
--   **`assignmentHistory`**: Logs all dispositions and assignments for each lead. (e.g., `{ mainDataRefId: '...', userId: '...', disposition: 'Interested', ... }`)
--   **`loginActivity`**: Tracks user login/logout events. (e.g., `{ userId: '...', activity: 'login', ... }`)
--   **`settings`**: A key-value store for application settings. Each document in this collection has an ID that represents the setting's key.
-    -   `doc('geofence')`: Stores the geofencing configuration.
-    -   `doc('universalCustomFields')`: Stores the list of custom fields that apply to all leads.
-    -   `doc('campaignCustomFields')`: Stores the map of campaign-specific custom fields.
-    -   And so on for other settings like dispositions.
-
-### Step 4: Review Server Actions
-
-The server actions in `src/actions/*.ts` have been rewritten to use the Firebase Admin SDK to communicate with Firestore. They no longer use the mock data from `src/lib/data.ts`. You should review these files to understand how the application interacts with the database.
-
-### Step 5: Setting Up Genkit for AI Features
-
-The AI-powered disposition suggestion will work once your environment is set up for it.
-
-1.  **Enable the AI API**: Go to the [Google AI Studio](https://aistudio.google.com/) and get an API key.
-2.  **Add API Key to Environment**: Add the following line to your `.env.local` file:
+1.  **Create `.env.local`**: In the root of your project, create a file named `.env.local`.
+2.  **Add `NEXT_PUBLIC_FIREBASE_CONFIG`**: Copy the entire `firebaseConfig` object from the Firebase console and add it to your `.env.local` file like this:
+    ```env
+    NEXT_PUBLIC_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"...","measurementId":"..."}'
+    ```
+    **Important**: The value must be a single line of JSON, enclosed in single quotes.
+3.  **Add `GOOGLE_API_KEY`**: For the AI features to work, go to the [Google AI Studio](https://aistudio.google.com/) and get an API key. Add it to your `.env.local` file:
     ```env
     GOOGLE_API_KEY="<your-google-ai-api-key>"
     ```
 
-### Step 6: Deploying to Production
+### Step 3: Create Your First Admin User
 
-A platform like **Vercel** or **Netlify** is recommended for deploying a Next.js app.
+Since the "master admin" has been removed for better security, you need to create your first user directly in the Firebase console.
 
-1.  **Choose a Hosting Provider**: Vercel is the easiest option as it's made by the creators of Next.js.
-2.  **Import Your Git Repository**: Connect your GitHub, GitLab, or Bitbucket account to your hosting provider and import the project repository.
-3.  **Configure Environment Variables**: In your hosting provider's project settings (e.g., Vercel's "Environment Variables" section), add all the variables from your `.env.local` file:
-    -   `FIREBASE_PROJECT_ID`
-    -   `FIREBASE_CLIENT_EMAIL`
-    -   `FIREBASE_PRIVATE_KEY`
-    -   `GOOGLE_API_KEY`
-4.  **Deploy**: Push your code to the `main` branch. The hosting provider will automatically build and deploy your application.
+1.  Go to the **Authentication** section in your Firebase project.
+2.  Click "Add user" and create a user with an email and password.
+3.  Go to the **Firestore Database** section. Create a new collection called `users`.
+4.  Create a new document in the `users` collection. **The Document ID must be the same as the User UID** from the Authentication tab.
+5.  Add the following fields to the document:
+    *   `name`: (string) Your name
+    *   `email`: (string) The email you just used
+    *   `phone`: (string) Your phone number
+    *   `role`: (string) Set this to `admin`
+    *   `status`: (string) Set this to `active`
+    *   `createdAt`: (string) `2024-01-01T00:00:00.000Z` (or any valid ISO date)
 
-After completing these steps, your LeadsFlow application will be fully functional and running on a production-ready Firebase infrastructure.
+You can now log into the application with this user's email and password to manage other users.
+
+### Step 4: Set Up Firestore Security Rules (Crucial for Production)
+
+Go to the **Firestore Database** section and click on the "Rules" tab. Replace the default rules with the following to secure your data:
+
+```
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow admins to read/write all user profiles
+    match /users/{userId} {
+      allow read, write: if request.auth.token.role == 'admin';
+      // Allow users to read their own profile
+      allow get: if request.auth.uid == userId;
+    }
+    
+    // Allow any authenticated user to read leads and settings
+    match /leads/{leadId} {
+      allow read: if request.auth != null;
+      // Allow admins to create/delete leads
+      allow create, delete: if request.auth.token.role == 'admin';
+      // Allow callers to update custom fields
+      allow update: if request.auth.token.role == 'caller';
+    }
+    
+    match /assignmentHistory/{docId} {
+       // Allow any authenticated user to read history
+      allow read: if request.auth != null;
+      // Allow admins and callers to create new history records
+      allow create: if request.auth.token.role == 'admin' || request.auth.token.role == 'caller';
+    }
+    
+    match /loginActivity/{docId} {
+        allow read, create: if request.auth != null;
+    }
+    
+    match /settings/{setting} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.role == 'admin';
+    }
+  }
+}
+```
+
+### Step 5: Deploy to Firebase App Hosting
+
+1.  **Install Firebase CLI**: If you haven't already, install the Firebase CLI: `npm install -g firebase-tools`.
+2.  **Log in to Firebase**: `firebase login`.
+3.  **Initialize Firebase**: `firebase init apphosting`. Follow the prompts to connect to your Firebase project.
+4.  **Deploy**: Run the deploy command:
+    ```bash
+    firebase apphosting:backends:deploy
+    ```
+    The CLI will guide you through creating the backend resource and deploying your app. After it finishes, it will provide you with the URL to your live application.

@@ -8,22 +8,13 @@ import { LeadsFlowLogo } from "@/components/icons"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getNavItems } from "@/lib/nav-items"
-import type { User } from "@/lib/types"
-import { getCurrentUser } from "@/lib/auth" // Client-side auth fetcher
+import { useAuth } from "@/hooks/use-auth"
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = React.useState<User | undefined>(undefined);
+  const { user } = useAuth();
 
-  React.useEffect(() => {
-    async function fetchUser() {
-      const user = await getCurrentUser();
-      setCurrentUser(user);
-    }
-    fetchUser();
-  }, []);
-
-  const navItems = getNavItems(currentUser?.role || 'caller');
+  const navItems = getNavItems(user?.role || 'caller');
 
   return (
     <aside className="hidden w-16 flex-col border-r bg-card sm:flex">

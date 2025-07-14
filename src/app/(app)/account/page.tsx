@@ -39,7 +39,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { updateUser } from '@/actions/users'
 import type { Disposition, SubDisposition, User } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +54,7 @@ import {
 } from '@/actions/settings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/hooks/use-auth';
 
 const ProfileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -85,7 +84,7 @@ function GeofenceSettingsForm({ settings, currentUser }: { settings: GeofenceSet
     async function onSubmit(data: z.infer<typeof GeofenceFormSchema>) {
         setIsSubmitting(true);
         try {
-            await saveGeofenceSettings(data, currentUser.id);
+            await saveGeofenceSettings(data);
             toast({
                 title: 'Settings Saved!',
                 description: 'Your geofencing settings have been updated.',
@@ -167,11 +166,11 @@ function GeofenceSettingsForm({ settings, currentUser }: { settings: GeofenceSet
 export default function AccountPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { user: currentUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true);
 
   // Data state
-  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [geofenceSettings, setGeofenceSettings] = React.useState<GeofenceSettings | null>(null);
   const [universalFields, setUniversalFields] = React.useState<string[]>([]);
   const [campaignFields, setCampaignFields] = React.useState<Record<string, string[]>>({});
@@ -194,8 +193,7 @@ export default function AccountPage() {
     async function fetchAllData() {
       setIsLoading(true);
       try {
-        const [user, gSettings, uFields, cFields, gDispos, gSubDispos, cDispos, cSubDispos] = await Promise.all([
-          getCurrentUser(),
+        const [gSettings, uFields, cFields, gDispos, gSubDispos, cDispos, cSubDispos] = await Promise.all([
           getGeofenceSettings(),
           getUniversalCustomFields(),
           getCampaignCustomFields(),
@@ -205,7 +203,6 @@ export default function AccountPage() {
           getCampaignSubDispositions(),
         ]);
         
-        setCurrentUser(user || null);
         setGeofenceSettings(gSettings);
         setUniversalFields(uFields);
         setCampaignFields(cFields);
@@ -239,24 +236,12 @@ export default function AccountPage() {
   })
 
   async function onProfileSubmit(data: z.infer<typeof ProfileFormSchema>) {
-    if (!currentUser) return;
-    setIsSubmitting(true)
-    try {
-      await updateUser(currentUser.id, data, currentUser.id)
-      toast({
-        title: 'Profile Updated!',
-        description: `Your details have been updated successfully.`,
+    // NOTE: This form is for display. Actual user edits happen in the User Management page.
+    // If you want profile editing here, a new server action would be needed.
+    toast({
+        title: 'Display Only',
+        description: `Profile editing is handled in the "Users" page by an administrator.`,
       })
-      router.refresh()
-    } catch (error) {
-      toast({
-        title: 'Update Failed',
-        description: 'Could not update your profile. Please try again.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
   }
 
   const handleSaveChanges = async (type: 'universal' | 'campaign' | 'dispositions') => {
@@ -268,19 +253,19 @@ export default function AccountPage() {
     try {
       switch (type) {
         case 'universal':
-          promise = saveUniversalCustomFields(universalFields, currentUser.id);
+          promise = saveUniversalCustomFields(universalFields);
           title = 'Universal Fields Saved!';
           break;
         case 'campaign':
-          promise = saveCampaignCustomFields(campaignFields, currentUser.id);
+          promise = saveCampaignCustomFields(campaignFields);
           title = 'Campaign Fields Saved!';
           break;
         case 'dispositions':
           promise = Promise.all([
-            saveGlobalDispositions(globalDispositions, currentUser.id),
-            saveGlobalSubDispositions(globalSubDispositions, currentUser.id),
+            saveGlobalDispositions(globalDispositions),
+            saveGlobalSubDispositions(globalSubDispositions),
             saveCampaignDispositions(campaignDispositions, currentUser.id),
-            saveCampaignSubDispositions(campaignSubDispositions, currentUser.id)
+            saveCampaignSubDispositions(campaignSubDispositions)
           ]);
           title = 'Dispositions Saved!';
           break;
@@ -307,7 +292,7 @@ export default function AccountPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full max-w-xl grid-cols-5">
+        <TabsList className="grid w-full max-w-xl grid-cols-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
@@ -318,7 +303,7 @@ export default function AccountPage() {
             <CardHeader>
               <CardTitle>Profile</CardTitle>
               <CardDescription>
-                Make changes to your public profile here. Click save when you're done.
+                This is your current user profile. Editing is handled by admins in User Management.
               </CardDescription>
             </CardHeader>
             <Form {...form}>
@@ -331,7 +316,7 @@ export default function AccountPage() {
                     <FormItem>
                         <FormLabel>Name</FormLabel>
                         <FormControl>
-                        <Input placeholder="John Doe" {...field} disabled={isSubmitting} />
+                        <Input placeholder="John Doe" {...field} disabled />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -357,7 +342,7 @@ export default function AccountPage() {
                     <FormItem>
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
-                        <Input placeholder="1234567890" {...field} disabled={isSubmitting}/>
+                        <Input placeholder="1234567890" {...field} disabled />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -386,8 +371,8 @@ export default function AccountPage() {
                 />
             </CardContent>
             <CardFooter className="border-t px-6 py-4">
-              <Button type="submit" disabled={isSubmitting || currentUser.id !== currentUser.id /* This is a placeholder for a real permission check */}>
-                {isSubmitting ? "Saving..." : "Save Changes"}
+              <Button type="submit">
+                Save Changes (Disabled)
               </Button>
             </CardFooter>
             </form>

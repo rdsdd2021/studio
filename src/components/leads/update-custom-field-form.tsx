@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -19,10 +20,9 @@ const FormSchema = z.object({
 interface UpdateCustomFieldFormProps {
   leadId: string;
   fieldName: string;
-  currentUserId: string; // Mocking current user ID
 }
 
-export function UpdateCustomFieldForm({ leadId, fieldName, currentUserId }: UpdateCustomFieldFormProps) {
+export function UpdateCustomFieldForm({ leadId, fieldName }: UpdateCustomFieldFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -37,7 +37,7 @@ export function UpdateCustomFieldForm({ leadId, fieldName, currentUserId }: Upda
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true);
     try {
-      await updateLeadCustomField(leadId, fieldName, data.value, currentUserId);
+      await updateLeadCustomField(leadId, fieldName, data.value);
       toast({
         title: 'Field Updated!',
         description: `The field "${fieldName}" has been updated.`,

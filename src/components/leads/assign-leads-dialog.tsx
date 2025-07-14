@@ -43,14 +43,12 @@ interface AssignLeadsDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   leadIds: string[]
-  currentUser: User;
 }
 
 export function AssignLeadsDialog({
   isOpen,
   onOpenChange,
   leadIds,
-  currentUser
 }: AssignLeadsDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -80,7 +78,7 @@ export function AssignLeadsDialog({
 
     setIsSubmitting(true)
     try {
-      await assignLeads(leadIds, data.userId, currentUser.id)
+      await assignLeads(leadIds, data.userId)
       toast({
         title: 'Leads Assigned!',
         description: `${leadIds.length} lead(s) have been assigned successfully.`,

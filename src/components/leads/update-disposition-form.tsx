@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -58,12 +59,11 @@ type SuggestionResponse = {
 
 interface UpdateDispositionFormProps {
   leadId: string;
-  currentUserId: string;
   history: Assignment[];
   myLeads: Lead[];
 }
 
-export function UpdateDispositionForm({ leadId, currentUserId, history, myLeads }: UpdateDispositionFormProps) {
+export function UpdateDispositionForm({ leadId, history, myLeads }: UpdateDispositionFormProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -133,7 +133,6 @@ export function UpdateDispositionForm({ leadId, currentUserId, history, myLeads 
     try {
       await addAssignment(
         leadId, 
-        currentUserId, 
         data.disposition, 
         data.subDisposition, 
         data.remark,

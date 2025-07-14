@@ -46,13 +46,11 @@ const FormSchema = z.object({
 interface AddUserDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  currentUser: User;
 }
 
 export function AddUserDialog({
   isOpen,
   onOpenChange,
-  currentUser,
 }: AddUserDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -68,7 +66,7 @@ export function AddUserDialog({
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setIsSubmitting(true)
     try {
-      await addUser(data, currentUser.id)
+      await addUser(data)
       toast({
         title: 'User Added!',
         description: `${data.name} has been added and is pending approval.`,

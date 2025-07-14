@@ -10,22 +10,20 @@ import { UserPlus } from 'lucide-react';
 import { AddUserDialog } from '@/components/users/add-user-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getUsers, getLoginActivity } from '@/actions/users';
-import { getCurrentUser } from '@/lib/auth'; // Using client-side auth fetcher
+import { useAuth } from '@/hooks/use-auth';
 
 export default function UsersPage() {
+  const { user } = useAuth();
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   const [data, setData] = React.useState<User[] | null>(null);
-  const [currentUser, setCurrentUser] = React.useState<User | undefined>(undefined);
 
   React.useEffect(() => {
     async function fetchData() {
-      const [users, loginActivity, cUser] = await Promise.all([
+      const [users, loginActivity] = await Promise.all([
           getUsers(),
           getLoginActivity(),
-          getCurrentUser(),
       ]);
-      setCurrentUser(cUser);
-
+      
       const latestActivityMap = new Map<string, LoginActivity>();
 
       loginActivity
@@ -51,13 +49,10 @@ export default function UsersPage() {
 
   return (
     <>
-      {currentUser && (
-        <AddUserDialog 
-          isOpen={isAddUserOpen} 
-          onOpenChange={setIsAddUserOpen}
-          currentUser={currentUser} 
-        />
-      )}
+      <AddUserDialog 
+        isOpen={isAddUserOpen} 
+        onOpenChange={setIsAddUserOpen}
+      />
       <div className="container mx-auto py-2">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -66,7 +61,7 @@ export default function UsersPage() {
               Add, edit, and manage user roles and permissions.
             </p>
           </div>
-          {currentUser?.role === 'admin' && (
+          {user?.role === 'admin' && (
             <Button onClick={() => setIsAddUserOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
               Add User
@@ -74,7 +69,7 @@ export default function UsersPage() {
           )}
         </div>
         {data ? (
-          <DataTable columns={columns} data={data} showToolbar={false} currentUser={currentUser} />
+          <DataTable columns={columns} data={data} showToolbar={false} />
         ) : (
           <div className="rounded-md border">
             <div className="p-4 space-y-4">

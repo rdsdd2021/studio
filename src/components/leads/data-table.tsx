@@ -38,7 +38,6 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   showToolbar?: boolean;
-  currentUser?: User;
   callers?: Option[];
   schoolOptions?: Option[];
   localityOptions?: Option[];
@@ -51,7 +50,6 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   showToolbar = true,
-  currentUser,
   callers,
   schoolOptions,
   localityOptions,
@@ -99,7 +97,6 @@ export function DataTable<TData, TValue>({
       globalFilter,
     },
     meta: {
-      currentUser,
       isAllFilteredRowsSelected,
       setIsAllFilteredRowsSelected,
     },
@@ -126,7 +123,6 @@ export function DataTable<TData, TValue>({
       {showToolbar && (
         <DataTableToolbar 
           table={table} 
-          currentUser={currentUser}
           callers={callers}
           schoolOptions={schoolOptions}
           localityOptions={localityOptions}

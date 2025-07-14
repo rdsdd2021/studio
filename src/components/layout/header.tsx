@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +25,11 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Menu } from "lucide-react"
+import { Menu, LogOut } from "lucide-react"
 import { LeadsFlowLogo } from "../icons"
 import { getNavItems } from "@/lib/nav-items"
 import type { User } from "@/lib/types"
-import { getCurrentUser } from "@/lib/auth" // Client-side auth fetcher
+import { useAuth } from "@/hooks/use-auth"
 
 function NavLinks({ userRole }: { userRole: User['role'] }) {
   const navItems = getNavItems(userRole);
@@ -48,18 +49,16 @@ function NavLinks({ userRole }: { userRole: User['role'] }) {
 }
 
 export function Header() {
-  const [currentUser, setCurrentUser] = React.useState<User | undefined>(undefined);
+  const { user, signOut } = useAuth();
+  const router = useRouter();
 
-  React.useEffect(() => {
-    async function fetchUser() {
-      const user = await getCurrentUser();
-      setCurrentUser(user);
-    }
-    fetchUser();
-  }, []);
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
-  const nameFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
-  const userRole = currentUser?.role || 'caller'; // Default to least privileged role
+  const nameFallback = user ? user.name.split(' ').map(n => n[0]).join('') : 'U';
+  const userRole = user?.role || 'caller';
 
   return (
     <>
@@ -99,7 +98,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={currentUser?.avatar} alt={currentUser?.name || 'User'} />
+                <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
                 <AvatarFallback>{nameFallback}</AvatarFallback>
               </Avatar>
             </Button>
@@ -107,9 +106,10 @@ export function Header() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{currentUser?.name || 'User'}</p>
+                <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+
                 <p className="text-xs leading-none text-muted-foreground">
-                  {currentUser?.email}
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -119,8 +119,9 @@ export function Header() {
             </DropdownMenuItem>
             <DropdownMenuItem disabled>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-               <Link href="/login">Log out</Link>
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
