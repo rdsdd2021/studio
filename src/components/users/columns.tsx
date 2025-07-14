@@ -135,6 +135,7 @@ export const columns: ColumnDef<User>[] = [
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
+        disabled={true}
       />
     ),
     cell: ({ row }) => (

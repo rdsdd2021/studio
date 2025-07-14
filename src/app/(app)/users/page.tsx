@@ -44,7 +44,7 @@ export default function UsersPage() {
     }
     
     fetchData();
-  }, []);
+  }, [isAddUserOpen]); // Refreshes data when a new user is added
 
 
   return (

@@ -8,45 +8,37 @@ let db: Firestore | null = null;
 let auth: Auth | null = null;
 
 try {
+  const serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  };
+
   const apps = getApps();
   if (!apps.length) {
-    // Production environment (Firebase App Hosting)
-    if (process.env.FIREBASE_CONFIG) {
-        console.log("Initializing Firebase with default credentials for App Hosting...");
-        app = initializeApp();
-    } 
-    // Local development environment
-    else if (process.env.FIREBASE_PRIVATE_KEY) {
+    // Prioritize local development with service account from .env.local
+    if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
         console.log("Initializing Firebase with service account credentials from .env.local...");
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-
-        if (!privateKey || !clientEmail || !projectId) {
-            throw new Error("Missing Firebase service account credentials in .env.local. Please check your setup.");
-        }
-
         app = initializeApp({
-            credential: cert({
-                projectId: projectId,
-                clientEmail: clientEmail,
-                privateKey: privateKey,
-            }),
-            databaseURL: `https://${projectId}.firebaseio.com`
+            credential: cert(serviceAccount),
+            databaseURL: `https://${serviceAccount.projectId}.firebaseio.com`
         });
-    } else {
-        console.warn("Firebase could not be initialized. Configure .env.local for local development or deploy to App Hosting.");
+    } 
+    // Fallback to default credentials for production (App Hosting)
+    else {
+        console.log("Initializing Firebase with Application Default Credentials for App Hosting...");
+        app = initializeApp();
     }
   } else {
     app = getApp();
   }
 
-  if (app) {
-    db = getFirestore(app);
-    auth = getAuth(app);
-  }
+  db = getFirestore(app);
+  auth = getAuth(app);
 } catch (error) {
-  console.error("Firebase initialization error:", error);
+  console.error("Firebase Admin SDK initialization error:", error);
+  // In case of error, db and auth will remain null.
+  // Functions using them should handle this case.
 }
 
 export { db, auth };
