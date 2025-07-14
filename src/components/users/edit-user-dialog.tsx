@@ -41,7 +41,6 @@ const FormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   phone: z.string().min(10, { message: 'Phone must be at least 10 digits.' }),
   role: z.enum(['admin', 'caller'], { required_error: 'Please select a role.' }),
-  status: z.enum(['pending', 'active', 'inactive']),
 })
 
 interface EditUserDialogProps {
@@ -66,7 +65,6 @@ export function EditUserDialog({
       email: user.email,
       phone: user.phone,
       role: user.role,
-      status: user.status,
     },
   })
 
@@ -77,7 +75,6 @@ export function EditUserDialog({
         email: user.email,
         phone: user.phone,
         role: user.role,
-        status: user.status,
       });
     }
   }, [user, form]);
@@ -171,31 +168,6 @@ export function EditUserDialog({
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                     <p className={cn("text-xs pt-1", field.value === 'active' ? 'text-green-600' : field.value === 'pending' ? 'text-amber-600' : 'text-destructive')}>
-                        User is currently {field.value}.
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

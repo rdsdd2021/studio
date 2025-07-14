@@ -65,7 +65,9 @@ export async function updateUser(userId: string, data: Partial<Omit<User, 'id' |
   const userRef = db.collection('users').doc(userId);
   await userRef.update({ ...data });
 
-  await auth.setCustomUserClaims(userId, { role: data.role });
+  if (data.role) {
+    await auth.setCustomUserClaims(userId, { role: data.role });
+  }
   
   revalidatePath('/users');
   const updatedDoc = await userRef.get();
@@ -84,6 +86,8 @@ export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | '
         disabled: true, // User starts as 'pending', so disable auth until approved.
     });
 
+    await auth.setCustomUserClaims(userRecord.uid, { role: data.role });
+
     const newUser: Omit<User, 'id' | 'avatar'> = {
         name: data.name,
         email: data.email,
@@ -94,8 +98,7 @@ export async function addUser(data: Omit<User, 'id' | 'createdAt' | 'avatar' | '
     };
   
     await db.collection('users').doc(userRecord.uid).set(newUser);
-    await auth.setCustomUserClaims(userRecord.uid, { role: data.role });
-
+    
     revalidatePath('/users');
     return { id: userRecord.uid, ...newUser, avatar: '' };
 }
